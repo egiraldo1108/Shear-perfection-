@@ -30,7 +30,38 @@ const{useState,useEffect,useCallback}=React;
 
 firebase.initializeApp({apiKey:"AIzaSyBl8f_QtWgT2SdeSVVNbmmHvs5eAM8p-H8",authDomain:"shear-perfection-barbershop.firebaseapp.com",projectId:"shear-perfection-barbershop",storageBucket:"shear-perfection-barbershop.firebasestorage.app",messagingSenderId:"99950197287",appId:"1:99950197287:web:c2c43a0cb289e4563b2c02"});
 const db=firebase.firestore();
-const fbSave=b=>db.collection("bookings").add(b);
+// Transaction-safe save: checks for slot conflicts before writing
+async function fbSave(b){
+  const svc=SERVICES.find(s=>s.name===b.service);
+  const dur=svc?svc.duration:30;
+  const[y,m,d]=b.date.split("-").map(Number);
+  const[bh,bmi]=b.time.split(":").map(Number);
+  const bStart=new Date(y,m-1,d,bh,bmi).getTime();
+  const bEnd=bStart+dur*60*1000;
+
+  const bookingsRef=db.collection("bookings");
+  return db.runTransaction(async tx=>{
+    // Read all bookings for that date
+    const snap=await tx.get(bookingsRef.where("date","==",b.date));
+    // Check for overlap
+    const conflict=snap.docs.some(doc=>{
+      const ex=doc.data();
+      if(!ex.time)return false;
+      const[eh,emi]=ex.time.split(":").map(Number);
+      const exSvc=SERVICES.find(s=>s.name===ex.service);
+      const exDur=exSvc?exSvc.duration:30;
+      const exStart=new Date(y,m-1,d,eh,emi).getTime();
+      const exEnd=exStart+exDur*60*1000;
+      return bStart<exEnd && bEnd>exStart;
+    });
+    if(conflict){
+      throw new Error("SLOT_TAKEN");
+    }
+    const newRef=bookingsRef.doc();
+    tx.set(newRef,b);
+    return newRef;
+  });
+}
 const fbDelete=id=>db.collection("bookings").doc(id).delete();
 const fbListen=cb=>db.collection("bookings").orderBy("at","desc").onSnapshot(s=>cb(s.docs.map(d=>({...d.data(),_id:d.id}))),e=>console.error(e));
 
@@ -398,9 +429,7 @@ function BookForm({allBookings,settings}){
       if(settings.oneSignalAppId&&settings.oneSignalApiKey){
         const dispDate=new Date(date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
         const dispTime=fmt12(time);
-        // Instant confirmation
         await sendPush(settings,"💈 New Booking!",`${b.name} booked ${svc.name} — ${dispDate} at ${dispTime}`);
-        // 3pm day-before reminder
         const remISO=getReminderISO(date);
         if(new Date(remISO)>new Date()){
           await sendPush(settings,"⏰ Appointment Tomorrow",""+`${b.name} — ${svc.name} at ${dispTime}. See you tomorrow! 💈`,remISO);
@@ -408,7 +437,15 @@ function BookForm({allBookings,settings}){
         setTimeout(()=>promptPush(),1500);
       }
       setStep(3);
-    }catch{alert("Couldn't save — check connection.");}
+    }catch(e){
+      if(e.message==="SLOT_TAKEN"){
+        alert("⚠️ Sorry, that time slot was just taken by someone else! Please go back and pick a different time.");
+        setTime("");
+        setStep(1);
+      } else {
+        alert("Couldn't save — check connection.");
+      }
+    }
     setSaving(false);
   };
   const reset=()=>{setSvc(null);setDate("");setTime("");setForm({name:"",phone:"",notes:"",recurring:"One-time"});setStep(0);};
