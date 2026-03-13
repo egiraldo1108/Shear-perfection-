@@ -189,6 +189,23 @@ function makeICS(b){
 }
 function dlICS(b){const blob=new Blob([makeICS(b)],{type:"text/calendar"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="appointment.ics";a.click();URL.revokeObjectURL(url);}
 
+function gCalLink(b){
+  const sv=SERVICES.find(s=>s.name===b.service),dur=sv?.duration||30;
+  const[y,mo,d]=b.date.split("-").map(Number),[h,mi]=b.time.split(":").map(Number);
+  const p=n=>String(n).padStart(2,"0");
+  const start=`${y}${p(mo)}${p(d)}T${p(h)}${p(mi)}00`;
+  const eD=new Date(y,mo-1,d,h,mi+dur);
+  const end=`${eD.getFullYear()}${p(eD.getMonth()+1)}${p(eD.getDate())}T${p(eD.getHours())}${p(eD.getMinutes())}00`;
+  const params=new URLSearchParams({
+    action:"TEMPLATE",
+    text:"Appointment at Shear Perfection",
+    dates:`${start}/${end}`,
+    details:`Service: ${b.service}\nNotes: ${b.notes||"None"}`,
+    location:"Shear Perfection Barbershop"
+  });
+  return`https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 // ── UI ATOMS ──────────────────────────────────────────────────────────────────
 const Lbl=({text,err,sub})=><div style={{marginBottom:6}}><div style={{fontSize:11,color:err?"#ff6b6b":C.red,letterSpacing:2,textTransform:"uppercase",fontWeight:700}}>{text}{err?` — ${err}`:""}</div>{sub&&<div style={{fontSize:12,color:C.dim,marginTop:2}}>{sub}</div>}</div>;
 const IS=(x={})=>({width:"100%",background:"#1a1a1a",border:`1px solid ${C.border}`,color:"#f0ebe3",padding:"13px 14px",fontSize:16,outline:"none",fontFamily:"inherit",borderRadius:0,WebkitAppearance:"none",...x});
@@ -520,7 +537,8 @@ function BookForm({allBookings,settings}){
           <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:`1px solid #1a1a1a`,fontSize:13}}><span style={{color:"#888"}}>{k}</span><span style={{color:"#f0ebe3",fontWeight:600}}>{v}</span></div>
         ))}
       </div>
-      <Btn onClick={()=>dlICS(last)} style={{width:"100%",maxWidth:360,padding:"14px",background:"#1a3a1a",color:"#6fcf6f",border:`1px solid ${C.green}`,fontSize:14,fontFamily:"inherit"}}>📅 Save to Apple Calendar</Btn>
+      <Btn onClick={()=>dlICS(last)} style={{width:"100%",maxWidth:360,padding:"14px",background:"#1a3a1a",color:"#6fcf6f",border:`1px solid ${C.green}`,fontSize:14,fontFamily:"inherit"}}>🍎 Save to Apple Calendar</Btn>
+      <Btn onClick={()=>window.open(gCalLink(last),"_blank")} style={{width:"100%",maxWidth:360,padding:"14px",background:"#0a1a2a",color:"#6fa8ff",border:`1px solid #2a4a6a`,fontSize:14,fontFamily:"inherit"}}>📅 Save to Google Calendar</Btn>
       <Btn onClick={reset} style={{width:"100%",maxWidth:360,padding:"14px",background:C.red,color:"#fff",fontFamily:"'Bebas Neue',cursive",fontSize:18,letterSpacing:2}}>BOOK ANOTHER</Btn>
     </div>
   );
@@ -575,7 +593,10 @@ function Dashboard({bookings}){
                   </div>
                   {b.recurring&&b.recurring!=="One-time"&&<div style={{fontSize:11,color:C.green,marginTop:4}}>🔁 {b.recurring}</div>}
                   {b.notes&&<div style={{marginTop:7,padding:"5px 10px",background:"#111",fontSize:12,color:"#888",fontStyle:"italic"}}>✂️ {b.notes}</div>}
-                  <Btn onClick={()=>dlICS(b)} style={{marginTop:8,background:"none",border:`1px solid #1a3a1a`,color:"#6fcf6f",padding:"4px 10px",fontSize:11,fontFamily:"inherit"}}>📅 Add to Calendar</Btn>
+                  <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+                    <Btn onClick={()=>dlICS(b)} style={{background:"none",border:`1px solid #1a3a1a`,color:"#6fcf6f",padding:"4px 10px",fontSize:11,fontFamily:"inherit"}}>🍎 Apple Cal</Btn>
+                    <Btn onClick={()=>window.open(gCalLink(b),"_blank")} style={{background:"none",border:`1px solid #1a2a3a`,color:"#6fa8ff",padding:"4px 10px",fontSize:11,fontFamily:"inherit"}}>📅 Google Cal</Btn>
+                  </div>
                 </div>
                 <Btn onClick={()=>doDelete(b._id)} disabled={deleting===b._id} style={{background:"none",border:`1px solid ${C.border}`,color:deleting===b._id?"#333":"#aaa",padding:"6px 9px",fontSize:13,flexShrink:0,fontFamily:"inherit"}}>{deleting===b._id?"...":"✕"}</Btn>
               </div>
