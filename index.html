@@ -30,39 +30,52 @@ const{useState,useEffect,useCallback}=React;
 
 firebase.initializeApp({apiKey:"AIzaSyBl8f_QtWgT2SdeSVVNbmmHvs5eAM8p-H8",authDomain:"shear-perfection-barbershop.firebaseapp.com",projectId:"shear-perfection-barbershop",storageBucket:"shear-perfection-barbershop.firebasestorage.app",messagingSenderId:"99950197287",appId:"1:99950197287:web:c2c43a0cb289e4563b2c02"});
 const db=firebase.firestore();
-// Transaction-safe save: checks for slot conflicts before writing
+
+// Slot-lock based save — atomically locks each 15-min slot covered by this booking
 async function fbSave(b){
   const svc=SERVICES.find(s=>s.name===b.service);
   const dur=svc?svc.duration:30;
-  const[y,m,d]=b.date.split("-").map(Number);
   const[bh,bmi]=b.time.split(":").map(Number);
-  const bStart=new Date(y,m-1,d,bh,bmi).getTime();
-  const bEnd=bStart+dur*60*1000;
-
-  const bookingsRef=db.collection("bookings");
+  const bStartMin=bh*60+bmi;
+  const slotsToLock=[];
+  for(let i=0;i<dur;i+=15){
+    const totalMin=bStartMin+i;
+    const hh=String(Math.floor(totalMin/60)).padStart(2,"0");
+    const mm=String(totalMin%60).padStart(2,"0");
+    slotsToLock.push(`${b.date}_${hh}:${mm}`);
+  }
+  const locksCol=db.collection("_locks");
+  const bookingsCol=db.collection("bookings");
   return db.runTransaction(async tx=>{
-    // Read all bookings for that date
-    const snap=await tx.get(bookingsRef.where("date","==",b.date));
-    // Check for overlap
-    const conflict=snap.docs.some(doc=>{
-      const ex=doc.data();
-      if(!ex.time)return false;
-      const[eh,emi]=ex.time.split(":").map(Number);
-      const exSvc=SERVICES.find(s=>s.name===ex.service);
-      const exDur=exSvc?exSvc.duration:30;
-      const exStart=new Date(y,m-1,d,eh,emi).getTime();
-      const exEnd=exStart+exDur*60*1000;
-      return bStart<exEnd && bEnd>exStart;
-    });
-    if(conflict){
-      throw new Error("SLOT_TAKEN");
-    }
-    const newRef=bookingsRef.doc();
+    const lockRefs=slotsToLock.map(s=>locksCol.doc(s));
+    const lockDocs=await Promise.all(lockRefs.map(r=>tx.get(r)));
+    if(lockDocs.some(d=>d.exists)) throw new Error("SLOT_TAKEN");
+    const newRef=bookingsCol.doc();
     tx.set(newRef,b);
+    lockRefs.forEach(r=>tx.set(r,{date:b.date,bookedAt:b.at}));
     return newRef;
   });
 }
-const fbDelete=id=>db.collection("bookings").doc(id).delete();
+const fbDelete=async id=>{
+  // Also clean up any slot locks for this booking
+  const snap=await db.collection("bookings").doc(id).get();
+  if(snap.exists){
+    const b=snap.data();
+    const svc=SERVICES.find(s=>s.name===b.service);
+    const dur=svc?svc.duration:30;
+    const[bh,bmi]=(b.time||"0:0").split(":").map(Number);
+    const bStartMin=bh*60+bmi;
+    const batch=db.batch();
+    batch.delete(db.collection("bookings").doc(id));
+    for(let i=0;i<dur;i+=15){
+      const totalMin=bStartMin+i;
+      const key=`${b.date}_${String(Math.floor(totalMin/60)).padStart(2,"0")}:${String(totalMin%60).padStart(2,"0")}`;
+      batch.delete(db.collection("_locks").doc(key));
+    }
+    return batch.commit();
+  }
+  return db.collection("bookings").doc(id).delete();
+};
 const fbListen=cb=>db.collection("bookings").orderBy("at","desc").onSnapshot(s=>cb(s.docs.map(d=>({...d.data(),_id:d.id}))),e=>console.error(e));
 
 const GCAL_KEY="AIzaSyDh4GSy6qYoT9Jtdzu0_BvjOTWxqzypeag";
