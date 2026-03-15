@@ -94,7 +94,7 @@ const SERVICES=[
   {name:"Men's Hair Dye Service",price:45,duration:90},
   {name:"Hair Designs (Small)",price:20,duration:30},
 ];
-const RECURRING=["One-time","Weekly","Every 2 weeks","Every 3 weeks","Monthly"];
+const RECURRING=["One-time","Weekly","Bi-Weekly","Every 3 Weeks","Every 4 Weeks"];
 const DAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAY_SHORT=["Su","Mo","Tu","We","Th","Fr","Sa"];
 const MONTH_NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -163,7 +163,7 @@ async function fetchGCal(url){
     return(data.items||[]).filter(e=>e.status!=="cancelled").map(e=>{
       const rawS=e.start.dateTime||e.start.date+"T00:00:00",rawE=e.end.dateTime||e.end.date+"T23:59:59";
       const sMs=new Date(rawS).getTime(),eMs=Math.max(new Date(rawE).getTime(),sMs+15*60*1000);
-      return{start:new Date(sMs).toISOString(),end:new Date(eMs).toISOString()};
+      return{title:e.summary||"",start:new Date(sMs).toISOString(),end:new Date(eMs).toISOString()};
     });
   }catch(e){console.error("GCal err",e);return null;}
 }
@@ -187,6 +187,8 @@ function genSlots(ds,serviceDur,calEvents,appBookings,cfg){
       const bS=new Date(y,m-1,d,bh,bmi),bE=new Date(bS.getTime()+bDur*60*1000);
       return dtS<bE&&dtE>bS;
     }))continue;
+    // Skip slots already in the past
+    if(dtS<=new Date())continue;
     slots.push(`${String(Math.floor(slotS/60)).padStart(2,"0")}:${String(slotS%60).padStart(2,"0")}`);
   }
   return slots;
@@ -245,14 +247,19 @@ function PinScreen({onSuccess,onCancel}){
 }
 
 // ── CALENDAR VIEW (owner only) ────────────────────────────────────────────────
-function CalendarView({bookings}){
+function CalendarView({bookings,settings}){
   const now=new Date();
   const[viewYear,setViewYear]=useState(now.getFullYear());
   const[viewMonth,setViewMonth]=useState(now.getMonth());
   const[selectedDate,setSelectedDate]=useState(null);
+  const[gcalEvents,setGcalEvents]=useState([]);
+  const[gcalLoading,setGcalLoading]=useState(false);
   const today=todayStr();
+  useEffect(()=>{if(!settings.calUrl)return;setGcalLoading(true);fetchGCal(settings.calUrl).then(evs=>{setGcalEvents(evs||[]);setGcalLoading(false);});},[settings.calUrl,viewMonth,viewYear]);
   const byDate={};
   bookings.forEach(b=>{if(b.date){if(!byDate[b.date])byDate[b.date]=[];byDate[b.date].push(b);}});
+  const gcalByDate={};
+  gcalEvents.forEach(ev=>{const ds=ev.start.split("T")[0];if(!gcalByDate[ds])gcalByDate[ds]=[];gcalByDate[ds].push(ev);});
   const firstDow=new Date(viewYear,viewMonth,1).getDay();
   const daysInMonth=new Date(viewYear,viewMonth+1,0).getDate();
   const cells=[];
@@ -261,79 +268,91 @@ function CalendarView({bookings}){
   const prevM=()=>{if(viewMonth===0){setViewYear(y=>y-1);setViewMonth(11);}else setViewMonth(m=>m-1);setSelectedDate(null);};
   const nextM=()=>{if(viewMonth===11){setViewYear(y=>y+1);setViewMonth(0);}else setViewMonth(m=>m+1);setSelectedDate(null);};
   const selBookings=selectedDate?(byDate[selectedDate]||[]).sort((a,b)=>a.time.localeCompare(b.time)):[];
+  const selGcal=selectedDate?(gcalByDate[selectedDate]||[]).sort((a,b)=>a.start.localeCompare(b.start)):[];
+  const selTotal=selBookings.length+selGcal.length;
+  const fmtGT=iso=>{if(!iso||!iso.includes("T"))return"All day";const d=new Date(iso);let h=d.getHours(),m=d.getMinutes();return`${h%12||12}:${String(m).padStart(2,"0")} ${h>=12?"PM":"AM"}`;};
   return(
-    <div style={{height:"100%",overflowY:"auto",background:C.bg,padding:16}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-        <div>
-          <div style={{fontFamily:"'Bebas Neue',cursive",fontSize:24,letterSpacing:3,color:C.text}}>BOOKING <span style={{color:C.red}}>CALENDAR</span></div>
-          <div style={{fontSize:10,color:C.dim,letterSpacing:2}}>🔒 OWNER ONLY</div>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <Btn onClick={prevM} style={{background:"#1a1a1a",color:"#ccc",border:`1px solid ${C.border}`,padding:"7px 14px",fontSize:18}}>‹</Btn>
-          <div style={{fontSize:12,fontWeight:700,color:C.text,minWidth:120,textAlign:"center"}}>{MONTH_NAMES[viewMonth].slice(0,3)} {viewYear}</div>
-          <Btn onClick={nextM} style={{background:"#1a1a1a",color:"#ccc",border:`1px solid ${C.border}`,padding:"7px 14px",fontSize:18}}>›</Btn>
-        </div>
-      </div>
-      {/* Day headers */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:2}}>
-        {DAY_SHORT.map(d=><div key={d} style={{textAlign:"center",fontSize:10,color:C.dim,padding:"4px 0",letterSpacing:1,fontWeight:700}}>{d}</div>)}
-      </div>
-      {/* Grid */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:20}}>
-        {cells.map((day,i)=>{
-          if(!day)return <div key={`e${i}`} style={{minHeight:52}}/>;
-          const ds=`${viewYear}-${String(viewMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-          const bks=byDate[ds]||[];
+    React.createElement("div",{style:{height:"100%",overflowY:"auto",background:C.bg,padding:16}},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:24,letterSpacing:3,color:C.text}},
+            "BOOKING ",React.createElement("span",{style:{color:C.red}},"CALENDAR")
+          ),
+          React.createElement("div",{style:{fontSize:10,color:C.dim,marginTop:2}},
+            gcalLoading?"syncing Google Cal...":gcalEvents.length>0?"● Google Cal synced":settings.calUrl?"● No upcoming Google events":"Add Google Cal URL in ⚙️ to sync"
+          )
+        ),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          React.createElement(Btn,{onClick:prevM,style:{background:"#1a1a1a",color:"#ccc",border:`1px solid ${C.border}`,padding:"7px 14px",fontSize:18}},"‹"),
+          React.createElement("div",{style:{fontSize:12,fontWeight:700,color:C.text,minWidth:120,textAlign:"center"}},MONTH_NAMES[viewMonth].slice(0,3)+" "+viewYear),
+          React.createElement(Btn,{onClick:nextM,style:{background:"#1a1a1a",color:"#ccc",border:`1px solid ${C.border}`,padding:"7px 14px",fontSize:18}},"›")
+        )
+      ),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:2}},
+        DAY_SHORT.map(d=>React.createElement("div",{key:d,style:{textAlign:"center",fontSize:10,color:C.dim,padding:"4px 0",letterSpacing:1,fontWeight:700}},d))
+      ),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:20}},
+        cells.map((day,idx)=>{
+          if(!day)return React.createElement("div",{key:"e"+idx,style:{minHeight:56}});
+          const ds=viewYear+"-"+String(viewMonth+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
+          const bks=byDate[ds]||[],gks=gcalByDate[ds]||[],hasAny=bks.length||gks.length;
           const isToday=ds===today,isSel=ds===selectedDate,isPast=ds<today;
-          return(
-            <div key={day} onClick={()=>setSelectedDate(isSel?null:ds)} style={{background:isSel?C.red:bks.length?"#1a0a0a":C.card,border:`1px solid ${isToday?C.red:isSel?C.red:C.border}`,padding:"5px 4px",minHeight:52,cursor:"pointer",opacity:isPast&&!bks.length?0.35:1}}>
-              <div style={{fontSize:12,color:isToday?C.red:isSel?"#fff":isPast?"#555":"#ccc",fontWeight:isToday?700:400,marginBottom:2,textAlign:"center"}}>{day}</div>
-              {bks.slice(0,2).map((b,bi)=><div key={bi} style={{fontSize:9,background:isSel?"rgba(255,255,255,0.25)":"#8B0000",color:"#fff",padding:"2px 3px",marginBottom:1,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",lineHeight:1.3}}>{fmt12(b.time)}</div>)}
-              {bks.length>2&&<div style={{fontSize:9,color:isSel?"rgba(255,255,255,0.7)":"#888",paddingLeft:2}}>+{bks.length-2}</div>}
-            </div>
+          return React.createElement("div",{key:day,onClick:()=>setSelectedDate(isSel?null:ds),style:{background:isSel?C.red:hasAny?"#0f0f0f":C.card,border:`1px solid ${isToday?C.red:isSel?C.red:C.border}`,padding:"4px 3px",minHeight:56,cursor:"pointer",opacity:isPast&&!hasAny?0.3:1}},
+            React.createElement("div",{style:{fontSize:12,color:isToday?C.red:isSel?"#fff":isPast?"#555":"#ccc",fontWeight:isToday?700:400,marginBottom:2,textAlign:"center"}},day),
+            bks.slice(0,1).map((b,bi)=>React.createElement("div",{key:bi,style:{fontSize:9,background:isSel?"rgba(255,255,255,0.3)":"#8B0000",color:"#fff",padding:"2px 3px",marginBottom:1,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",lineHeight:1.3}},fmt12(b.time))),
+            gks.slice(0,1).map((ev,ei)=>React.createElement("div",{key:ei,style:{fontSize:9,background:isSel?"rgba(255,255,255,0.2)":"#1a3a5a",color:"#7ab8ff",padding:"2px 3px",marginBottom:1,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",lineHeight:1.3}},fmtGT(ev.start))),
+            (bks.length+gks.length)>2&&React.createElement("div",{style:{fontSize:9,color:"#666",paddingLeft:2}},"+"+String(bks.length+gks.length-2))
           );
-        })}
-      </div>
-      {/* Selected day detail */}
-      {selectedDate&&(
-        <div>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-            <div style={{fontSize:11,color:C.red,letterSpacing:2,fontWeight:700,textTransform:"uppercase"}}>{new Date(selectedDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</div>
-            <div style={{background:C.red,color:"#fff",fontSize:11,fontWeight:700,padding:"2px 8px"}}>{selBookings.length} appt{selBookings.length!==1?"s":""}</div>
-          </div>
-          {selBookings.length===0
-            ?<div style={{padding:"20px",textAlign:"center",border:`1px dashed ${C.border}`,color:"#555",fontSize:13}}>No bookings this day</div>
-            :selBookings.map(b=>{
+        })
+      ),
+      selectedDate&&React.createElement("div",null,
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}},
+          React.createElement("div",{style:{fontSize:11,color:C.red,letterSpacing:2,fontWeight:700,textTransform:"uppercase"}},new Date(selectedDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})),
+          selTotal>0&&React.createElement("div",{style:{background:C.red,color:"#fff",fontSize:11,fontWeight:700,padding:"2px 8px"}},selTotal+" event"+(selTotal!==1?"s":""))
+        ),
+        selTotal===0
+          ?React.createElement("div",{style:{padding:"20px",textAlign:"center",border:`1px dashed ${C.border}`,color:"#555",fontSize:13}},"Nothing scheduled this day")
+          :React.createElement("div",null,
+            selBookings.map(b=>{
               const sv=SERVICES.find(s=>s.name===b.service);
-              return(
-                <div key={b._id} style={{background:C.card,border:`1px solid ${C.border}`,padding:"13px 14px",marginBottom:8,display:"flex",gap:10}}>
-                  <div style={{width:3,background:C.red,flexShrink:0,alignSelf:"stretch"}}/>
-                  <div style={{flex:1}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                      <div><div style={{fontWeight:700,fontSize:15,color:"#f0ebe3"}}>{b.name}</div><div style={{fontSize:12,color:"#888",marginTop:1}}>{b.phone}</div></div>
-                      <div style={{fontFamily:"'Bebas Neue',cursive",fontSize:20,color:C.red}}>${b.price}</div>
-                    </div>
-                    <div style={{fontSize:13,color:"#bbb",marginTop:5}}><span style={{marginRight:12}}>🕐 {fmt12(b.time)}</span>{sv&&<span>⏱ {sv.duration} min</span>}</div>
-                    <div style={{fontSize:12,color:"#999",marginTop:3}}>{b.service}</div>
-                    {b.recurring&&b.recurring!=="One-time"&&<div style={{fontSize:11,color:C.green,marginTop:4}}>🔁 {b.recurring}</div>}
-                    {b.notes&&<div style={{marginTop:6,padding:"5px 10px",background:"#111",fontSize:12,color:"#888",fontStyle:"italic"}}>✂️ {b.notes}</div>}
-                  </div>
-                </div>
+              return React.createElement("div",{key:b._id,style:{background:C.card,border:"1px solid #2a1a1a",padding:"13px 14px",marginBottom:8,display:"flex",gap:10}},
+                React.createElement("div",{style:{width:3,background:C.red,flexShrink:0,alignSelf:"stretch"}}),
+                React.createElement("div",{style:{flex:1}},
+                  React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
+                    React.createElement("div",null,React.createElement("div",{style:{fontWeight:700,fontSize:15,color:"#f0ebe3"}},b.name),React.createElement("div",{style:{fontSize:12,color:"#888",marginTop:1}},b.phone)),
+                    React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:20,color:C.red}},"$"+b.price)
+                  ),
+                  React.createElement("div",{style:{fontSize:12,color:"#bbb",marginTop:5}},"🕐 "+fmt12(b.time)+(sv?" · ⏱ "+sv.duration+" min":"")),
+                  React.createElement("div",{style:{fontSize:12,color:"#888",marginTop:2}},b.service),
+                  b.recurring&&b.recurring!=="One-time"&&React.createElement("div",{style:{fontSize:11,color:C.green,marginTop:4}},"🔁 "+b.recurring),
+                  b.notes&&React.createElement("div",{style:{marginTop:5,padding:"4px 10px",background:"#111",fontSize:12,color:"#777",fontStyle:"italic"}},"✂️ "+b.notes)
+                )
               );
-            })
-          }
-        </div>
-      )}
-      {!selectedDate&&<div style={{display:"flex",gap:16,marginTop:4,flexWrap:"wrap"}}>
-        {[{c:C.red,l:"Today"},{c:"#8B0000",l:"Has bookings"},{c:C.card,l:"Open day"}].map(({c,l})=>(
-          <div key={l} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:10,height:10,background:c,border:`1px solid ${C.border}`}}/><span style={{fontSize:11,color:C.dim}}>{l}</span></div>
-        ))}
-      </div>}
-    </div>
+            }),
+            selGcal.map((ev,i)=>React.createElement("div",{key:i,style:{background:"#0a1520",border:"1px solid #1a3a5a",padding:"13px 14px",marginBottom:8,display:"flex",gap:10}},
+              React.createElement("div",{style:{width:3,background:"#2a6aaa",flexShrink:0,alignSelf:"stretch"}}),
+              React.createElement("div",{style:{flex:1}},
+                React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}},
+                  React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#a0c8f0"}},ev.title||"Google Calendar Event"),
+                  React.createElement("div",{style:{fontSize:10,background:"#1a3a5a",color:"#7ab8ff",padding:"2px 7px",flexShrink:0,fontWeight:700,letterSpacing:1}},"GCAL")
+                ),
+                React.createElement("div",{style:{fontSize:12,color:"#6a9abf",marginTop:5}},!ev.start.includes("T")?"📅 All day":"🕐 "+fmtGT(ev.start)+" → "+fmtGT(ev.end))
+              )
+            ))
+          )
+      ),
+      !selectedDate&&React.createElement("div",{style:{display:"flex",gap:14,marginTop:4,flexWrap:"wrap"}},
+        [{c:C.red,l:"Today"},{c:"#8B0000",l:"App booking"},{c:"#1a3a5a",l:"Google Cal"},{c:C.card,l:"Open"}].map(({c,l})=>
+          React.createElement("div",{key:l,style:{display:"flex",alignItems:"center",gap:5}},
+            React.createElement("div",{style:{width:10,height:10,background:c,border:"1px solid #333"}}),
+            React.createElement("span",{style:{fontSize:11,color:C.dim}},l)
+          )
+        )
+      )
+    )
   );
 }
 
-// ── SETTINGS ──────────────────────────────────────────────────────────────────
 function Settings({settings,onSave,onBack}){
   const initHours=()=>{const def=mkDefaultDayHours();const saved=settings.dayHours||{};const merged={};for(let i=0;i<7;i++)merged[i]={...def[i],...(saved[i]||{})};return merged;};
   const[calUrl,setCalUrl]=useState(settings.calUrl||"");
@@ -648,7 +667,7 @@ function App(){
       <div style={{flex:1,overflow:"hidden"}}>
         {ownerView==="book"&&<BookForm allBookings={bookings} settings={settings}/>}
         {ownerView==="dash"&&<Dashboard bookings={bookings}/>}
-        {ownerView==="cal"&&<CalendarView bookings={bookings}/>}
+        {ownerView==="cal"&&<CalendarView bookings={bookings} settings={settings}/>}
         {ownerView==="settings"&&<Settings settings={settings} onSave={setSettings} onBack={()=>setOwnerView("dash")}/>}
       </div>
       <div style={{padding:"8px 16px",background:"#080808",borderTop:"1px solid #1a1a1a",display:"flex",justifyContent:"flex-end"}}>
