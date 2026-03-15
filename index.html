@@ -31,23 +31,47 @@ const{useState,useEffect,useCallback}=React;
 firebase.initializeApp({apiKey:"AIzaSyBl8f_QtWgT2SdeSVVNbmmHvs5eAM8p-H8",authDomain:"shear-perfection-barbershop.firebaseapp.com",projectId:"shear-perfection-barbershop",storageBucket:"shear-perfection-barbershop.firebasestorage.app",messagingSenderId:"99950197287",appId:"1:99950197287:web:c2c43a0cb289e4563b2c02"});
 const db=firebase.firestore();
 
-// Slot-lock based save — atomically locks each 15-min slot covered by this booking
-async function fbSave(b){
-  const svc=SERVICES.find(s=>s.name===b.service);
-  const dur=svc?svc.duration:30;
+// ── RECURRING HELPERS ─────────────────────────────────────────────────────────
+const INTERVAL_DAYS={"Weekly":7,"Bi-Weekly":14,"Every 3 Weeks":21,"Every 4 Weeks":28};
+function uid(){return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);}
+
+function slotsForBooking(b){
+  const svc=SERVICES.find(s=>s.name===b.service),dur=svc?svc.duration:30;
   const[bh,bmi]=b.time.split(":").map(Number);
-  const bStartMin=bh*60+bmi;
-  const slotsToLock=[];
+  const bStartMin=bh*60+bmi,slots=[];
   for(let i=0;i<dur;i+=15){
-    const totalMin=bStartMin+i;
-    const hh=String(Math.floor(totalMin/60)).padStart(2,"0");
-    const mm=String(totalMin%60).padStart(2,"0");
-    slotsToLock.push(`${b.date}_${hh}:${mm}`);
+    const tot=bStartMin+i;
+    slots.push(`${b.date}_${String(Math.floor(tot/60)).padStart(2,"0")}:${String(tot%60).padStart(2,"0")}`);
   }
-  const locksCol=db.collection("_locks");
-  const bookingsCol=db.collection("bookings");
+  return slots;
+}
+
+// Save a single booking with slot lock (returns null if slot taken)
+async function fbSaveOne(b){
+  const slots=slotsForBooking(b);
+  const locksCol=db.collection("_locks"),bookingsCol=db.collection("bookings");
+  try{
+    return await db.runTransaction(async tx=>{
+      const lockRefs=slots.map(s=>locksCol.doc(s));
+      const lockDocs=await Promise.all(lockRefs.map(r=>tx.get(r)));
+      if(lockDocs.some(d=>d.exists)) throw new Error("SLOT_TAKEN");
+      const newRef=bookingsCol.doc();
+      tx.set(newRef,b);
+      lockRefs.forEach(r=>tx.set(r,{date:b.date,bookedAt:b.at}));
+      return newRef;
+    });
+  }catch(e){
+    if(e.message==="SLOT_TAKEN") return null;
+    throw e;
+  }
+}
+
+// Save one-time booking (throws SLOT_TAKEN if conflict)
+async function fbSave(b){
+  const slots=slotsForBooking(b);
+  const locksCol=db.collection("_locks"),bookingsCol=db.collection("bookings");
   return db.runTransaction(async tx=>{
-    const lockRefs=slotsToLock.map(s=>locksCol.doc(s));
+    const lockRefs=slots.map(s=>locksCol.doc(s));
     const lockDocs=await Promise.all(lockRefs.map(r=>tx.get(r)));
     if(lockDocs.some(d=>d.exists)) throw new Error("SLOT_TAKEN");
     const newRef=bookingsCol.doc();
@@ -56,26 +80,84 @@ async function fbSave(b){
     return newRef;
   });
 }
-const fbDelete=async id=>{
-  // Also clean up any slot locks for this booking
-  const snap=await db.collection("bookings").doc(id).get();
-  if(snap.exists){
-    const b=snap.data();
-    const svc=SERVICES.find(s=>s.name===b.service);
-    const dur=svc?svc.duration:30;
-    const[bh,bmi]=(b.time||"0:0").split(":").map(Number);
-    const bStartMin=bh*60+bmi;
-    const batch=db.batch();
-    batch.delete(db.collection("bookings").doc(id));
-    for(let i=0;i<dur;i+=15){
-      const totalMin=bStartMin+i;
-      const key=`${b.date}_${String(Math.floor(totalMin/60)).padStart(2,"0")}:${String(totalMin%60).padStart(2,"0")}`;
-      batch.delete(db.collection("_locks").doc(key));
-    }
-    return batch.commit();
+
+// Save a full recurring series — books 1 year out, skips conflicts
+async function fbSaveSeries(baseBooking){
+  const intervalDays=INTERVAL_DAYS[baseBooking.recurring];
+  if(!intervalDays) return fbSave(baseBooking); // one-time fallback
+  const seriesId=uid();
+  const now=new Date();
+  const oneYearOut=new Date(now.getFullYear()+1,now.getMonth(),now.getDate());
+  // Generate all dates
+  const dates=[];
+  let cur=new Date(baseBooking.date+"T12:00:00");
+  while(cur<=oneYearOut){
+    dates.push(cur.toISOString().split("T")[0]);
+    cur=new Date(cur.getTime()+intervalDays*24*60*60*1000);
   }
-  return db.collection("bookings").doc(id).delete();
-};
+  let savedFirst=false,skipped=0;
+  for(const date of dates){
+    const b={...baseBooking,date,seriesId,seriesInterval:intervalDays,at:new Date().toISOString()};
+    const ref=await fbSaveOne(b);
+    if(ref){if(!savedFirst)savedFirst=true;}
+    else skipped++;
+  }
+  if(!savedFirst) throw new Error("SLOT_TAKEN");
+  return {seriesId,total:dates.length,skipped};
+}
+
+// Extend a series to keep 1 year of future bookings
+async function fbExtendSeries(seriesId,seriesInterval,baseBooking){
+  // Find the latest date in this series
+  const snap=await db.collection("bookings").where("seriesId","==",seriesId).get();
+  if(snap.empty) return;
+  const dates=snap.docs.map(d=>d.data().date).sort();
+  const latest=dates[dates.length-1];
+  const oneYearOut=new Date();
+  oneYearOut.setFullYear(oneYearOut.getFullYear()+1);
+  let cur=new Date(latest+"T12:00:00");
+  cur=new Date(cur.getTime()+seriesInterval*24*60*60*1000);
+  while(cur<=oneYearOut){
+    const date=cur.toISOString().split("T")[0];
+    const b={...baseBooking,date,seriesId,seriesInterval,at:new Date().toISOString()};
+    await fbSaveOne(b);
+    cur=new Date(cur.getTime()+seriesInterval*24*60*60*1000);
+  }
+}
+
+// Delete a single booking and its slot locks
+async function fbDeleteOne(id){
+  const snap=await db.collection("bookings").doc(id).get();
+  if(!snap.exists) return db.collection("bookings").doc(id).delete();
+  const b=snap.data();
+  const slots=slotsForBooking(b);
+  const batch=db.batch();
+  batch.delete(db.collection("bookings").doc(id));
+  slots.forEach(s=>batch.delete(db.collection("_locks").doc(s)));
+  return batch.commit();
+}
+
+// Delete all bookings in a series
+async function fbDeleteSeries(seriesId){
+  const snap=await db.collection("bookings").where("seriesId","==",seriesId).get();
+  // Firestore batch limit is 500 — chunk if needed
+  const docs=snap.docs;
+  for(let i=0;i<docs.length;i+=400){
+    const batch=db.batch();
+    const chunk=docs.slice(i,i+400);
+    for(const doc of chunk){
+      const b=doc.data();
+      const slots=slotsForBooking(b);
+      batch.delete(db.collection("bookings").doc(doc.id));
+      slots.forEach(s=>batch.delete(db.collection("_locks").doc(s)));
+    }
+    await batch.commit();
+  }
+}
+
+// Alias for single delete (kept for compatibility)
+const fbDelete=fbDeleteOne;
+
 const fbListen=cb=>db.collection("bookings").orderBy("at","desc").onSnapshot(s=>cb(s.docs.map(d=>({...d.data(),_id:d.id}))),e=>console.error(e));
 
 const GCAL_KEY="AIzaSyDh4GSy6qYoT9Jtdzu0_BvjOTWxqzypeag";
@@ -473,12 +555,18 @@ function BookForm({allBookings,settings}){
     if(!validate())return;setSaving(true);
     try{
       const b={...form,service:svc.name,price:svc.price,date,time,at:new Date().toISOString()};
-      await fbSave(b);setLast(b);
+      const isRecurring=form.recurring&&form.recurring!=="One-time";
+      if(isRecurring){
+        await fbSaveSeries(b);
+      } else {
+        await fbSave(b);
+      }
+      setLast(b);
       // Push notifications
       if(settings.oneSignalAppId&&settings.oneSignalApiKey){
         const dispDate=new Date(date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
         const dispTime=fmt12(time);
-        await sendPush(settings,"💈 New Booking!",`${b.name} booked ${svc.name} — ${dispDate} at ${dispTime}`);
+        await sendPush(settings,"💈 New Booking!",`${b.name} booked ${svc.name} — ${dispDate} at ${dispTime}${isRecurring?" ("+form.recurring+")":" "}`);
         const remISO=getReminderISO(date);
         if(new Date(remISO)>new Date()){
           await sendPush(settings,"⏰ Appointment Tomorrow",""+`${b.name} — ${svc.name} at ${dispTime}. See you tomorrow! 💈`,remISO);
@@ -489,8 +577,7 @@ function BookForm({allBookings,settings}){
     }catch(e){
       if(e.message==="SLOT_TAKEN"){
         alert("⚠️ Sorry, that time slot was just taken by someone else! Please go back and pick a different time.");
-        setTime("");
-        setStep(1);
+        setTime("");setStep(1);
       } else {
         alert("Couldn't save — check connection.");
       }
@@ -577,65 +664,168 @@ function BookForm({allBookings,settings}){
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function Dashboard({bookings}){
-  const sorted=[...bookings].sort((a,b)=>new Date(b.at)-new Date(a.at));
+function Dashboard({bookings,settings}){
+  const sorted=[...bookings].sort((a,b)=>{
+    // Sort by date+time ascending for future, then by created desc for past
+    const dateA=a.date+a.time, dateB=b.date+b.time;
+    return dateA.localeCompare(dateB);
+  });
   const td=new Date().toDateString();
   const todayN=bookings.filter(b=>{try{return new Date(b.at).toDateString()===td;}catch{return false;}}).length;
-  const recN=bookings.filter(b=>b.recurring&&b.recurring!=="One-time").length;
+  const recN=new Set(bookings.filter(b=>b.seriesId).map(b=>b.seriesId)).size;
   const rev=bookings.reduce((s,b)=>s+(Number(b.price)||0),0);
   const[deleting,setDeleting]=useState(null);
-  const doDelete=async id=>{setDeleting(id);try{await fbDelete(id);}catch{alert("Couldn't delete.");}setDeleting(null);};
+  const[deleteModal,setDeleteModal]=useState(null); // {id, seriesId, name}
+  const[extending,setExtending]=useState(false);
+
+  // Auto-extend series that have dropped below 1 year of future bookings
+  useEffect(()=>{
+    if(!bookings.length) return;
+    const today=todayStr();
+    const oneYearOut=new Date();
+    oneYearOut.setFullYear(oneYearOut.getFullYear()+1);
+    const oneYearStr=oneYearOut.toISOString().split("T")[0];
+    // Group by seriesId
+    const seriesMap={};
+    bookings.forEach(b=>{
+      if(!b.seriesId) return;
+      if(!seriesMap[b.seriesId]) seriesMap[b.seriesId]={latest:"",booking:b};
+      if(b.date>seriesMap[b.seriesId].latest) seriesMap[b.seriesId].latest=b.date;
+    });
+    // Extend any series whose latest date is less than 1 year from today
+    const toExtend=Object.entries(seriesMap).filter(([sid,v])=>v.latest<oneYearStr);
+    if(!toExtend.length) return;
+    setExtending(true);
+    (async()=>{
+      for(const[sid,v] of toExtend){
+        const b=v.booking;
+        if(!b.seriesInterval) continue;
+        try{await fbExtendSeries(sid,b.seriesInterval,b);}catch(e){console.error("extend series",e);}
+      }
+      setExtending(false);
+    })();
+  },[bookings.length]);
+
+  const confirmDelete=(id,seriesId,name)=>{
+    if(seriesId){setDeleteModal({id,seriesId,name});}
+    else{doDeleteOne(id);}
+  };
+  const doDeleteOne=async id=>{
+    setDeleting(id);setDeleteModal(null);
+    try{await fbDeleteOne(id);}catch{alert("Couldn't delete.");}
+    setDeleting(null);
+  };
+  const doDeleteSeries=async seriesId=>{
+    setDeleteModal(null);setDeleting(seriesId);
+    try{await fbDeleteSeries(seriesId);}catch{alert("Couldn't delete series.");}
+    setDeleting(null);
+  };
+
+  // Split into upcoming and past
+  const todayISO=todayStr();
+  const upcoming=sorted.filter(b=>b.date>=todayISO);
+  const past=sorted.filter(b=>b.date<todayISO).reverse();
+
   return(
     <div style={{height:"100%",overflowY:"auto",background:C.bg,padding:16}}>
+      {/* Delete modal */}
+      {deleteModal&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{background:"#161616",border:`1px solid ${C.red}`,padding:24,width:"100%",maxWidth:340}}>
+            <div style={{fontFamily:"'Bebas Neue',cursive",fontSize:18,letterSpacing:2,color:C.text,marginBottom:8}}>DELETE APPOINTMENT</div>
+            <div style={{fontSize:13,color:"#aaa",marginBottom:20,lineHeight:1.7}}>
+              <strong style={{color:"#f0ebe3"}}>{deleteModal.name}</strong> has a recurring series booked. What would you like to delete?
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <Btn onClick={()=>doDeleteOne(deleteModal.id)} style={{padding:"13px",background:"#1a1a1a",color:"#f0ebe3",border:`1px solid ${C.border}`,fontSize:14,fontFamily:"inherit",textAlign:"left"}}>
+                <div style={{fontWeight:700}}>Just this appointment</div>
+                <div style={{fontSize:11,color:"#888",marginTop:2}}>Remove only this one date, keep the rest</div>
+              </Btn>
+              <Btn onClick={()=>doDeleteSeries(deleteModal.seriesId)} style={{padding:"13px",background:"#1a0000",color:"#ff6b6b",border:`1px solid ${C.red}`,fontSize:14,fontFamily:"inherit",textAlign:"left"}}>
+                <div style={{fontWeight:700}}>Entire series</div>
+                <div style={{fontSize:11,color:"#aa4444",marginTop:2}}>Remove all recurring appointments for this client</div>
+              </Btn>
+              <Btn onClick={()=>setDeleteModal(null)} style={{padding:"11px",background:"none",color:"#888",border:`1px solid ${C.border}`,fontSize:13,fontFamily:"inherit"}}>Cancel</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{marginBottom:16}}>
         <div style={{fontFamily:"'Bebas Neue',cursive",fontSize:24,letterSpacing:3,color:C.text}}>ESTEBAN'S <span style={{color:C.red}}>DASHBOARD</span></div>
-        <div style={{fontSize:10,color:C.dim,letterSpacing:2}}>🔴 LIVE · SYNCS ACROSS ALL DEVICES</div>
+        <div style={{fontSize:10,color:C.dim,letterSpacing:2}}>🔴 LIVE · SYNCS ACROSS ALL DEVICES{extending&&" · extending series..."}</div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:18}}>
-        {[{l:"Total Bookings",v:bookings.length},{l:"Today",v:todayN},{l:"Recurring",v:recN},{l:"Est. Revenue",v:`$${rev}`}].map(s=>(
+        {[{l:"Total Bookings",v:bookings.length},{l:"Today",v:todayN},{l:"Recurring Clients",v:recN},{l:"Est. Revenue",v:`$${rev}`}].map(s=>(
           <div key={s.l} style={{background:C.card,border:`1px solid ${C.border}`,padding:"12px 14px"}}>
             <div style={{fontFamily:"'Bebas Neue',cursive",fontSize:30,color:C.red,lineHeight:1}}>{s.v}</div>
             <div style={{fontSize:10,color:"#888",letterSpacing:1,textTransform:"uppercase",marginTop:3}}>{s.l}</div>
           </div>
         ))}
       </div>
-      {sorted.length===0?(
+
+      {bookings.length===0?(
         <div style={{textAlign:"center",padding:"40px 20px",border:`1px dashed ${C.border}`,color:"#666"}}>
           <div style={{fontSize:32,marginBottom:8}}>📅</div>
           <div style={{fontFamily:"'Bebas Neue',cursive",fontSize:18,letterSpacing:2,marginBottom:4}}>NO BOOKINGS YET</div>
           <div style={{fontSize:13}}>Share your link so clients can start booking!</div>
         </div>
       ):(
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {sorted.map(b=>{
-            const sv=SERVICES.find(s=>s.name===b.service);
-            return(
-              <div key={b._id} style={{background:C.card,border:`1px solid ${C.border}`,padding:"14px",display:"flex",gap:10,alignItems:"flex-start"}}>
-                <div style={{width:3,alignSelf:"stretch",background:C.red,flexShrink:0}}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",justifyContent:"space-between",gap:6,alignItems:"flex-start"}}>
-                    <div><div style={{fontWeight:700,fontSize:15,color:"#f0ebe3"}}>{b.name}</div><div style={{fontSize:12,color:"#888",marginTop:2}}>{b.phone}</div></div>
-                    <div style={{background:C.red,color:"#fff",fontSize:11,fontWeight:700,padding:"3px 8px",flexShrink:0}}>${b.price}</div>
-                  </div>
-                  <div style={{fontSize:13,color:"#bbb",marginTop:5}}>{b.service}</div>
-                  <div style={{display:"flex",gap:12,marginTop:5,flexWrap:"wrap"}}>
-                    <span style={{fontSize:12,color:"#888"}}>📅 {b.date}</span>
-                    <span style={{fontSize:12,color:"#888"}}>🕐 {fmt12(b.time)}</span>
-                    {sv&&<span style={{fontSize:12,color:"#888"}}>⏱ {sv.duration} min</span>}
-                  </div>
-                  {b.recurring&&b.recurring!=="One-time"&&<div style={{fontSize:11,color:C.green,marginTop:4}}>🔁 {b.recurring}</div>}
-                  {b.notes&&<div style={{marginTop:7,padding:"5px 10px",background:"#111",fontSize:12,color:"#888",fontStyle:"italic"}}>✂️ {b.notes}</div>}
-                  <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
-                    <Btn onClick={()=>dlICS(b)} style={{background:"none",border:`1px solid #1a3a1a`,color:"#6fcf6f",padding:"4px 10px",fontSize:11,fontFamily:"inherit"}}>🍎 Apple Cal</Btn>
-                    <Btn onClick={()=>window.open(gCalLink(b),"_blank")} style={{background:"none",border:`1px solid #1a2a3a`,color:"#6fa8ff",padding:"4px 10px",fontSize:11,fontFamily:"inherit"}}>📅 Google Cal</Btn>
-                  </div>
-                </div>
-                <Btn onClick={()=>doDelete(b._id)} disabled={deleting===b._id} style={{background:"none",border:`1px solid ${C.border}`,color:deleting===b._id?"#333":"#aaa",padding:"6px 9px",fontSize:13,flexShrink:0,fontFamily:"inherit"}}>{deleting===b._id?"...":"✕"}</Btn>
+        <div>
+          {/* Upcoming */}
+          {upcoming.length>0&&(
+            <div>
+              <div style={{fontSize:10,color:C.red,letterSpacing:2,fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Upcoming ({upcoming.length})</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+                {upcoming.map(b=>renderBookingCard(b,deleting,deleteModal,confirmDelete))}
               </div>
-            );
-          })}
+            </div>
+          )}
+          {/* Past */}
+          {past.length>0&&(
+            <div>
+              <div style={{fontSize:10,color:"#555",letterSpacing:2,fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Past ({past.length})</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8,opacity:0.6}}>
+                {past.slice(0,10).map(b=>renderBookingCard(b,deleting,deleteModal,confirmDelete))}
+                {past.length>10&&<div style={{textAlign:"center",fontSize:12,color:"#555",padding:8}}>+ {past.length-10} older appointments</div>}
+              </div>
+            </div>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+function renderBookingCard(b,deleting,deleteModal,confirmDelete){
+  const sv=SERVICES.find(s=>s.name===b.service);
+  const isDeleting=deleting===b._id||deleting===b.seriesId;
+  return(
+    <div key={b._id} style={{background:"#161616",border:`1px solid #222`,padding:"14px",display:"flex",gap:10,alignItems:"flex-start"}}>
+      <div style={{width:3,alignSelf:"stretch",background:b.seriesId?"#2a6aaa":"#8B0000",flexShrink:0}}/>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",justifyContent:"space-between",gap:6,alignItems:"flex-start"}}>
+          <div>
+            <div style={{fontWeight:700,fontSize:15,color:"#f0ebe3"}}>{b.name}</div>
+            <div style={{fontSize:12,color:"#888",marginTop:2}}>{b.phone}</div>
+          </div>
+          <div style={{background:"#8B0000",color:"#fff",fontSize:11,fontWeight:700,padding:"3px 8px",flexShrink:0}}>${b.price}</div>
+        </div>
+        <div style={{fontSize:13,color:"#bbb",marginTop:5}}>{b.service}</div>
+        <div style={{display:"flex",gap:12,marginTop:5,flexWrap:"wrap"}}>
+          <span style={{fontSize:12,color:"#888"}}>📅 {b.date}</span>
+          <span style={{fontSize:12,color:"#888"}}>🕐 {fmt12(b.time)}</span>
+          {sv&&<span style={{fontSize:12,color:"#888"}}>⏱ {sv.duration} min</span>}
+        </div>
+        {b.seriesId&&<div style={{fontSize:11,color:"#7ab8ff",marginTop:4}}>🔁 {b.recurring} · recurring series</div>}
+        {!b.seriesId&&b.recurring&&b.recurring!=="One-time"&&<div style={{fontSize:11,color:"#4caf50",marginTop:4}}>🔁 {b.recurring}</div>}
+        {b.notes&&<div style={{marginTop:7,padding:"5px 10px",background:"#111",fontSize:12,color:"#888",fontStyle:"italic"}}>✂️ {b.notes}</div>}
+        <div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>
+          <Btn onClick={()=>dlICS(b)} style={{background:"none",border:"1px solid #1a3a1a",color:"#6fcf6f",padding:"4px 10px",fontSize:11,fontFamily:"inherit"}}>🍎 Apple Cal</Btn>
+          <Btn onClick={()=>window.open(gCalLink(b),"_blank")} style={{background:"none",border:"1px solid #1a2a3a",color:"#6fa8ff",padding:"4px 10px",fontSize:11,fontFamily:"inherit"}}>📅 Google Cal</Btn>
+        </div>
+      </div>
+      <Btn onClick={()=>confirmDelete(b._id,b.seriesId,b.name)} disabled={isDeleting} style={{background:"none",border:`1px solid #222`,color:isDeleting?"#333":"#aaa",padding:"6px 9px",fontSize:13,flexShrink:0,fontFamily:"inherit"}}>{isDeleting?"...":"✕"}</Btn>
     </div>
   );
 }
@@ -666,7 +856,7 @@ function App(){
       </div>
       <div style={{flex:1,overflow:"hidden"}}>
         {ownerView==="book"&&<BookForm allBookings={bookings} settings={settings}/>}
-        {ownerView==="dash"&&<Dashboard bookings={bookings}/>}
+        {ownerView==="dash"&&<Dashboard bookings={bookings} settings={settings}/>}
         {ownerView==="cal"&&<CalendarView bookings={bookings} settings={settings}/>}
         {ownerView==="settings"&&<Settings settings={settings} onSave={setSettings} onBack={()=>setOwnerView("dash")}/>}
       </div>
