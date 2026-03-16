@@ -99,8 +99,7 @@ async function sendNotif(topic,title,message){
   try{
     await fetch(`https://ntfy.sh/${topic}`,{
       method:"POST",
-      headers:{"Title":title,"Priority":"high","Tags":"scissors"},
-      body:message
+      body:title+": "+message
     });
   }catch(e){console.error("Notif failed",e);}
 }
@@ -403,8 +402,7 @@ function Settings({settings,onSave,onBack}){
     try{
       const r=await fetch(`https://ntfy.sh/${ntfyTopic}`,{
         method:"POST",
-        headers:{"Title":"💈 Shear Perfection","Priority":"high","Tags":"scissors"},
-        body:"Notifications working! You're all set Esteban."
+        body:"💈 Shear Perfection: Notifications working! You're all set Esteban."
       });
       if(r.ok){
         setNotifLog("✅ Sent! Status "+r.status+" — check ntfy app");
