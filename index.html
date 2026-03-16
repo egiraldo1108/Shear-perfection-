@@ -453,8 +453,28 @@ function Settings({settings,onSave,onBack}){
             {testSent?"✅ Sent! Check your phone":"🔔 Send Test Notification"}
           </Btn>
         )}
-        <Btn onClick={async()=>{await promptPush();}} style={{width:"100%",padding:"13px",background:"#1a0a0a",color:"#ff8888",border:"1px solid #8B0000",fontSize:14,fontFamily:"inherit",marginTop:8}}>🔔 Enable Notifications on This Device</Btn>
-        <div style={{marginTop:10,padding:"10px 14px",background:"#0a0a18",border:`1px solid #2a2a4a`,fontSize:12,color:"#8888cc",lineHeight:1.8}}>
+        <div style={{marginTop:8,background:"#0f0f0f",border:`1px solid ${notifStatus==="granted"?C.green:C.red}`,padding:"14px"}}>
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+    <div style={{fontSize:13,color:"#f0ebe3",fontWeight:700}}>🔔 Push Notifications</div>
+    <Btn onClick={async()=>{
+      setNotifLog("Checking OneSignal...");
+      if(!window.OneSignal){setNotifLog("❌ OneSignal not loaded");return;}
+      setNotifLog("OneSignal found. Requesting permission...");
+      try{
+        const result=await window.OneSignal.Notifications.requestPermission();
+        setNotifStatus(Notification.permission);
+        setNotifLog("Result: "+JSON.stringify(result)+" | Permission: "+Notification.permission);
+      }catch(e){setNotifLog("❌ Error: "+e.message);}
+    }} style={{padding:"8px 18px",background:notifStatus==="granted"?C.green:C.red,color:"#fff",fontSize:12,fontFamily:"inherit",fontWeight:700}}>
+      {notifStatus==="granted"?"ON":"OFF"}
+    </Btn>
+  </div>
+  <div style={{fontSize:10,color:"#888",marginBottom:notifLog?6:0}}>
+    {notifStatus==="granted"?"Notifications enabled on this device":notifStatus==="denied"?"Blocked — go to iPhone Settings → Shear Perfection → Notifications":"Tap OFF to enable"}
+  </div>
+  {notifLog&&<div style={{fontSize:10,color:"#6fcf6f",fontFamily:"monospace",wordBreak:"break-all"}}>{notifLog}</div>}
+</div>
+        <hdiv style={{marginTop:10,padding:"10px 14px",background:"#0a0a18",border:`1px solid #2a2a4a`,fontSize:12,color:"#8888cc",lineHeight:1.8}}>
           <div style={{fontWeight:700,marginBottom:4,color:"#aaaaee"}}>What gets sent automatically:</div>
           <div>📲 You + client both notified instantly on every new booking</div>
           <div>⏰ Reminder push sent at 3pm the day before each appointment</div>
