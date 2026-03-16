@@ -6,7 +6,7 @@
 <title>Book with Esteban · Shear Perfection</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://www.gstatic.com"/>
-<link rel="preconnect" href="https://api.telnyx.com"/>
+<link rel="preconnect" href="https://ntfy.sh"/>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -57,7 +57,7 @@ const MONTH_NAMES=["January","February","March","April","May","June","July","Aug
 const C={bg:"#0c0c0c",card:"#161616",border:"#222",red:"#8B0000",text:"#f0ebe3",muted:"#c8bfb4",dim:"#777",green:"#4caf50"};
 
 const mkDefaultDayHours=()=>{const h={};for(let i=0;i<7;i++)h[i]={open:i!==0,start:9,end:19};return h;};
-const DEF={dayHours:mkDefaultDayHours(),calUrl:"",telnyxApiKey:"",telnyxFrom:"",ownerPhone:""};
+const DEF={dayHours:mkDefaultDayHours(),calUrl:"",ntfyTopic:""};
 const fbGetSettings=async()=>{
   try{const d=await db.collection("_config").doc("settings").get();
     if(d.exists){const data=d.data();if(!data.dayHours)data.dayHours=mkDefaultDayHours();return {...DEF,...data};}
@@ -94,15 +94,15 @@ async function fetchGCal(url){
   }catch(e){console.error("GCal err",e);return null;}
 }
 
-async function sendSMS(cfg,to,message){
-  if(!cfg.telnyxApiKey||!cfg.telnyxFrom||!to)return;
+async function sendNotif(topic,title,message){
+  if(!topic)return;
   try{
-    await fetch("https://api.telnyx.com/v2/messages",{
+    await fetch(`https://ntfy.sh/${topic}`,{
       method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":`Bearer ${cfg.telnyxApiKey}`},
-      body:JSON.stringify({from:cfg.telnyxFrom,to,text:message})
+      headers:{"Title":title,"Priority":"high","Tags":"scissors"},
+      body:message
     });
-  }catch(e){console.error("SMS failed",e);}
+  }catch(e){console.error("Notif failed",e);}
 }
 
 function uid(){return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);}
@@ -382,9 +382,7 @@ function Settings({settings,onSave,onBack}){
   const initHours=()=>{const def=mkDefaultDayHours();const saved=settings.dayHours||{};const merged={};for(let i=0;i<7;i++)merged[i]={...def[i],...(saved[i]||{})};return merged;};
   const[calUrl,setCalUrl]=useState(settings.calUrl||"");
   const[dayHours,setDayHours]=useState(initHours);
-  const[txApiKey,setTxApiKey]=useState(settings.telnyxApiKey||"");
-  const[txFrom,setTxFrom]=useState(settings.telnyxFrom||"");
-  const[ownerPhone,setOwnerPhone]=useState(settings.ownerPhone||"");
+  const[ntfyTopic,setNtfyTopic]=useState(settings.ntfyTopic||"");
   const[ct,setCt]=useState(false);const[cm,setCm]=useState(null);
   const[smsSent,setSmsSent]=useState(false);
   const toggleDay=i=>setDayHours(h=>({...h,[i]:{...h[i],open:!h[i].open}}));
@@ -398,44 +396,36 @@ function Settings({settings,onSave,onBack}){
     else setCm({ok:true,msg:`✅ Connected! Found ${r.length} upcoming event${r.length!==1?"s":""}. Busy times blocked automatically.`});
     setCt(false);
   };
-  const testSMS=async()=>{
-    if(!txApiKey||!txFrom||!ownerPhone){alert("Fill in API Key, From number, and your phone number first.");return;}
-    await sendSMS({telnyxApiKey:txApiKey,telnyxFrom:txFrom},ownerPhone,"💈 Shear Perfection SMS is working! Esteban you're all set.");
+  const testNotif=async()=>{
+    if(!ntfyTopic){alert("Enter your ntfy topic first.");return;}
+    await sendNotif(ntfyTopic,"💈 Shear Perfection","Notifications are working! You're all set Esteban.");
     setSmsSent(true);setTimeout(()=>setSmsSent(false),3000);
   };
-  const save=()=>{onSave({calUrl,dayHours,telnyxApiKey:txApiKey,telnyxFrom:txFrom,ownerPhone});onBack();};
+  const save=()=>{onSave({calUrl,dayHours,ntfyTopic});onBack();};
   const hours=Array.from({length:18},(_,i)=>i+5);
   return(
     <div style={{height:"100%",overflowY:"auto",background:C.bg,padding:"20px 20px 60px"}}>
       <div style={{fontFamily:"'Bebas Neue',cursive",fontSize:22,letterSpacing:3,color:C.text,marginBottom:4}}>ESTEBAN'S <span style={{color:C.red}}>SETTINGS</span></div>
-      <div style={{fontSize:12,color:C.dim,marginBottom:24}}>SMS notifications · Google Calendar · Schedule</div>
+      <div style={{fontSize:12,color:C.dim,marginBottom:24}}>Push notifications · Google Calendar · Schedule</div>
       <div style={{marginBottom:28}}>
-        <Lbl text="SMS Notifications (Telnyx)" sub="Text you instantly every time a client books"/>
+        <Lbl text="Push Notifications (ntfy.sh)" sub="Free instant push to your phone on every booking"/>
         <div style={{background:"#111",border:`1px solid ${C.border}`,padding:"14px 16px",marginBottom:12}}>
-          <div style={{fontSize:11,color:C.red,fontWeight:700,letterSpacing:2,marginBottom:10}}>SETUP (~5 MINS · FREE TRIAL AVAILABLE)</div>
-          {["1. Go to telnyx.com → sign up free","2. Add a phone number (Mission Control → Numbers → Buy)","3. Go to API Keys → create a new key → paste below","4. Enter your Telnyx number as the From number (e.g. +14015550000)","5. Enter your personal cell as My Phone","6. Save Settings and tap Test SMS"].map(s=><div key={s} style={{fontSize:12,color:C.muted,paddingBottom:5,lineHeight:1.5}}>{s}</div>)}
+          <div style={{fontSize:11,color:C.red,fontWeight:700,letterSpacing:2,marginBottom:10}}>SETUP (FREE · 2 MINS)</div>
+          {["1. Search 'ntfy' in the App Store → install the free app","2. Open ntfy → tap + → enter topic: shear-perfection-esteban","3. Tap Subscribe","4. Type that same topic in the field below","5. Save Settings → tap Test Notification"].map(s=><div key={s} style={{fontSize:12,color:C.muted,paddingBottom:5,lineHeight:1.5}}>{s}</div>)}
         </div>
-        <div style={{marginBottom:10}}>
-          <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>TELNYX API KEY</div>
-          <input style={IS()} value={txApiKey} onChange={e=>setTxApiKey(e.target.value)} placeholder="KEY01..." autoCapitalize="none" autoCorrect="off" spellCheck={false} type="password"/>
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>YOUR NTFY TOPIC</div>
+          <input style={IS()} value={ntfyTopic} onChange={e=>setNtfyTopic(e.target.value)} placeholder="shear-perfection-esteban" autoCapitalize="none" autoCorrect="off" spellCheck={false}/>
         </div>
-        <div style={{marginBottom:10,marginTop:10}}>
-          <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>FROM NUMBER (your Telnyx number)</div>
-          <input style={IS()} value={txFrom} onChange={e=>setTxFrom(e.target.value)} placeholder="+14015550000" autoCapitalize="none" autoCorrect="off" spellCheck={false} type="tel"/>
-        </div>
-        <div style={{marginBottom:12,marginTop:10}}>
-          <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>MY PHONE (your personal cell)</div>
-          <input style={IS()} value={ownerPhone} onChange={e=>setOwnerPhone(e.target.value)} placeholder="+14015550001" autoCapitalize="none" autoCorrect="off" spellCheck={false} type="tel"/>
-        </div>
-        {txApiKey&&txFrom&&ownerPhone&&(
-          <Btn onClick={testSMS} style={{width:"100%",padding:"13px",background:smsSent?"#0d1a00":"#0d1a0d",color:"#6fcf6f",border:`1px solid ${C.green}`,fontSize:14,fontFamily:"inherit"}}>
-            {smsSent?"✅ Sent! Check your phone":"📱 Test SMS"}
+        {ntfyTopic&&(
+          <Btn onClick={testNotif} style={{width:"100%",padding:"13px",background:smsSent?"#0d1a00":"#0d1a0d",color:"#6fcf6f",border:`1px solid ${C.green}`,fontSize:14,fontFamily:"inherit"}}>
+            {smsSent?"✅ Sent! Check your phone":"🔔 Test Notification"}
           </Btn>
         )}
         <div style={{marginTop:10,padding:"10px 14px",background:"#0a180a",border:"1px solid #2a4a2a",fontSize:12,color:"#88cc88",lineHeight:1.8}}>
           <div style={{fontWeight:700,marginBottom:4,color:"#aaeaaa"}}>What gets sent:</div>
-          <div>📲 Instant text to you on every new booking</div>
-          <div>💰 ~$0.004 per text — basically free at your volume</div>
+          <div>📲 Instant push on every new booking with name, service & time</div>
+          <div>💰 100% free — no limits, no credit card</div>
         </div>
       </div>
       <div style={{marginBottom:28}}>
@@ -494,7 +484,6 @@ function BookForm({allBookings,settings}){
   const[saving,setSaving]=useState(false);
   const[last,setLast]=useState(null);
   const setF=(k,v)=>setForm(f=>({...f,[k]:v}));
-
   useEffect(()=>{
     if(!date||!svc)return;
     setSlots([]);setTime("");setLoading(true);setCalWarn(false);
@@ -505,7 +494,6 @@ function BookForm({allBookings,settings}){
       setLoading(false);
     })();
   },[date,svc?.name]);
-
   useEffect(()=>{
     if(!svc)return;
     setNextAvail(null);setSearchingNext(true);
@@ -522,9 +510,7 @@ function BookForm({allBookings,settings}){
       setSearchingNext(false);
     })();
   },[svc?.name]);
-
   const validate=()=>{const e={};if(!form.name.trim())e.name="Required";if(!form.phone.trim())e.phone="Required";setErrors(e);return!Object.keys(e).length;};
-
   const submit=async()=>{
     if(!validate())return;setSaving(true);
     try{
@@ -532,9 +518,9 @@ function BookForm({allBookings,settings}){
       const isRecurring=form.recurring&&form.recurring!=="One-time";
       if(isRecurring){await fbSaveSeries(b);}else{await fbSave(b);}
       setLast(b);
-      if(settings.telnyxApiKey&&settings.telnyxFrom&&settings.ownerPhone){
+      if(settings.ntfyTopic){
         const dispDate=new Date(date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
-        sendSMS(settings,settings.ownerPhone,`💈 New booking!\n${b.name} · ${svc.name}\n${dispDate} at ${fmt12(time)}${isRecurring?" ("+form.recurring+")":""}\n${b.phone}`);
+        sendNotif(settings.ntfyTopic,"💈 New Booking!",`${b.name} · ${svc.name}\n${dispDate} at ${fmt12(time)}${isRecurring?" ("+form.recurring+")":""}\n${b.phone}`);
       }
       setStep(3);
     }catch(e){
@@ -543,7 +529,6 @@ function BookForm({allBookings,settings}){
     }
     setSaving(false);
   };
-
   const reset=()=>{setSvc(null);setDate("");setTime("");setForm({name:"",phone:"",notes:"",recurring:"One-time"});setStep(0);};
 
   if(step===0)return(
@@ -644,7 +629,6 @@ function Dashboard({bookings,settings}){
   const[extending,setExtending]=useState(false);
   const[gcalEvents,setGcalEvents]=useState([]);
   const[weekOffset,setWeekOffset]=useState(0);
-
   useEffect(()=>{
     if(!bookings.length)return;
     const oneYearStr=new Date(new Date().setFullYear(new Date().getFullYear()+1)).toISOString().split("T")[0];
@@ -655,13 +639,10 @@ function Dashboard({bookings,settings}){
     setExtending(true);
     (async()=>{for(const[,v]of toExtend){const b=v.booking;if(!b.seriesInterval)continue;try{await fbExtendSeries(b.seriesId,b.seriesInterval,b);}catch(e){console.error("extend",e);}}setExtending(false);})();
   },[bookings.length]);
-
   useEffect(()=>{if(!settings.calUrl)return;fetchGCal(settings.calUrl).then(evs=>setGcalEvents(evs||[]));},[settings.calUrl]);
-
   const confirmDelete=(id,seriesId,name)=>{if(seriesId)setDeleteModal({id,seriesId,name});else doDeleteOne(id);};
   const doDeleteOne=async id=>{setDeleting(id);setDeleteModal(null);try{await fbDeleteOne(id);}catch{alert("Couldn't delete.");}setDeleting(null);};
   const doDeleteSeries=async seriesId=>{setDeleteModal(null);setDeleting(seriesId);try{await fbDeleteSeries(seriesId);}catch{alert("Couldn't delete series.");}setDeleting(null);};
-
   const now=new Date();
   const diffToMon=now.getDay()===0?-6:1-now.getDay();
   const weekStart=new Date(now);weekStart.setDate(now.getDate()+diffToMon+(weekOffset*7));weekStart.setHours(0,0,0,0);
@@ -671,7 +652,6 @@ function Dashboard({bookings,settings}){
   const isCurrentWeek=weekOffset===0;
   const todayISO=todayStr();
   const td=new Date().toDateString();
-
   const todayN=bookings.filter(b=>{try{return new Date(b.at).toDateString()===td;}catch{return false;}}).length;
   const recN=new Set(bookings.filter(b=>b.seriesId).map(b=>b.seriesId)).size;
   const weekAppBookings=bookings.filter(b=>b.date>=weekStartStr&&b.date<=weekEndStr);
@@ -687,12 +667,10 @@ function Dashboard({bookings,settings}){
     });
   }).length;
   const weekRev=weekAppRev+(weekGcalCount*40);
-
   const seenSeries=new Set();
   const upcoming=bookings.filter(b=>b.date>=todayISO).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).filter(b=>{if(!b.seriesId)return true;if(seenSeries.has(b.seriesId))return false;seenSeries.add(b.seriesId);return true;});
   const past=bookings.filter(b=>b.date<todayISO).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).slice(0,5);
   const weekLabel=`${weekStart.toLocaleDateString("en-US",{month:"short",day:"numeric"})} – ${weekEnd.toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;
-
   return(
     <div style={{height:"100%",overflowY:"auto",background:C.bg,padding:16}}>
       {deleteModal&&(
@@ -814,17 +792,13 @@ function App(){
   const[isOwner,setIsOwner]=useLS("sp_owner",false);
   const[showPin,setShowPin]=useState(false);
   const[ownerView,setOwnerView]=useState("dash");
-
   const setSettings=async s=>{setSettingsState(s);try{await fbSaveSettings(s);}catch(e){console.error(e);}};
-
   useEffect(()=>{
     fbGetSettings()
       .then(s=>{setSettingsState(s);setReady(true);})
       .catch(()=>setDbErr(true));
   },[]);
-
   useEffect(()=>{if(!ready)return;return fbListen(setBookings);},[ready]);
-
   if(dbErr)return(
     <div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:C.bg,padding:32,textAlign:"center",gap:16}}>
       <div style={{fontSize:40}}>⚠️</div>
@@ -835,7 +809,6 @@ function App(){
   );
   if(!ready)return(<div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:C.bg,gap:16}}><div style={{fontSize:40}}>💈</div><Dots/><div style={{fontSize:13,color:C.dim}}>Connecting...</div></div>);
   if(showPin)return(<PinScreen onSuccess={()=>{setIsOwner(true);setShowPin(false);setOwnerView("dash");}} onCancel={()=>setShowPin(false)}/>);
-
   if(isOwner)return(
     <div style={{width:"100%",height:"100vh",display:"flex",flexDirection:"column",background:C.bg,color:C.text}}>
       <div style={{display:"flex",background:"#080808",borderBottom:"1px solid #1a1a1a",flexShrink:0}}>
@@ -855,7 +828,6 @@ function App(){
       </div>
     </div>
   );
-
   return(
     <div style={{width:"100%",height:"100vh",display:"flex",flexDirection:"column",background:C.bg,color:C.text}}>
       <div style={{flex:1,overflow:"hidden"}}><BookForm allBookings={bookings} settings={settings}/></div>
@@ -874,6 +846,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
+
 
 
 
