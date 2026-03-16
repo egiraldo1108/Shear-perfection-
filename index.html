@@ -154,14 +154,14 @@ const OWNER_PIN="1108";
 const SERVICES=[
   {name:"Men's / Young Men's Haircut",price:40,duration:30},
   {name:"Men's Haircut w/ Beard",price:50,duration:30},
-  {name:"Men's Overgrown Service",price:60,duration:60},
+  {name:"Men's Overgrown Service",price:50,duration:60},
   {name:"Kid's Cut (Under 10)",price:35,duration:30},
-  {name:"Line Up",price:25,duration:20},
+  {name:"Line Up",price:25,duration:15},
   {name:"Line Up w/ Beard",price:30,duration:30},
   {name:"Premium Beard",price:35,duration:30},
-  {name:"Bald Head",price:20,duration:25},
-  {name:"Bald Head w/ Beard",price:40,duration:40},
-  {name:"Men's Hair Dye Service",price:45,duration:90},
+  {name:"Bald Head",price:20,duration:15},
+  {name:"Bald Head w/ Beard",price:40,duration:30},
+  {name:"Men's Hair Dye Service",price:15,duration:15},
   {name:"Hair Designs (Small)",price:20,duration:30},
 ];
 const RECURRING=["One-time","Weekly","Bi-Weekly","Every 3 Weeks","Every 4 Weeks"];
@@ -196,7 +196,7 @@ function loadOneSignal(appId){
   window.OneSignalDeferred=window.OneSignalDeferred||[];
   const s=document.createElement("script");s.src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";s.defer=true;document.head.appendChild(s);
   window.OneSignalDeferred.push(async function(OneSignal){
-    try{await OneSignal.init({appId,notifyButton:{enable:false},welcomeNotification:{disable:true}});console.log("OneSignal ready");}
+    try{await OneSignal.init({appId,notifyButton:{enable:false},welcomeNotification:{disable:true},serviceWorkerPath:"/Shear-perfection-/OneSignalSDKWorker.js",serviceWorkerParam:{scope:"/Shear-perfection-/"}});console.log("OneSignal ready");}
     catch(e){console.error("OneSignal init",e);}
   });
 }
@@ -438,15 +438,15 @@ function Settings({settings,onSave,onBack}){
         <Lbl text="Push Notifications" sub="Booking confirmations + 3pm day-before reminders"/>
         <div style={{background:"#111",border:`1px solid ${C.border}`,padding:"14px 16px",marginBottom:12}}>
           <div style={{fontSize:11,color:C.red,fontWeight:700,letterSpacing:2,marginBottom:10}}>SETUP (FREE · 5 MINS)</div>
-          {["1. Go to onesignal.com → sign up free","2. New App → Web → enter your site URL","3. Choose 'Custom Code' setup","4. Copy your App ID → paste below","5. Go to Keys & IDs → copy App API Key → paste below","6. Add OneSignalSDKWorker.js file to your GitHub repo root","7. Save Settings, then tap Allow when the popup appears"].map(s=><div key={s} style={{fontSize:12,color:C.muted,paddingBottom:5,lineHeight:1.5}}>{s}</div>)}
+          {["1. Go to onesignal.com → sign up free","2. New App → Web → enter your site URL","3. Choose 'Custom Code' setup","4. Copy your App ID → paste below","5. Go to Keys & IDs → copy REST API Key → paste below","6. Add OneSignalSDKWorker.js file to your GitHub repo root","7. Save Settings, then tap Allow when the popup appears"].map(s=><div key={s} style={{fontSize:12,color:C.muted,paddingBottom:5,lineHeight:1.5}}>{s}</div>)}
         </div>
         <div style={{marginBottom:10}}>
           <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>APP ID</div>
           <input style={IS({marginBottom:10})} value={osAppId} onChange={e=>setOsAppId(e.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autoCapitalize="none" autoCorrect="off" spellCheck={false}/>
         </div>
         <div style={{marginBottom:12}}>
-          <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>APP API KEY</div>
-          <input style={IS()} value={osApiKey} onChange={e=>setOsApiKey(e.target.value)} placeholder="App API Key from Keys & IDs" autoCapitalize="none" autoCorrect="off" spellCheck={false} type="password"/>
+          <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>REST API KEY</div>
+          <input style={IS()} value={osApiKey} onChange={e=>setOsApiKey(e.target.value)} placeholder="REST API Key from Keys & IDs" autoCapitalize="none" autoCorrect="off" spellCheck={false} type="password"/>
         </div>
         {osAppId&&osApiKey&&(
           <Btn onClick={testPush} style={{width:"100%",padding:"13px",background:testSent?"#0d1a00":"#0d0d2a",color:testSent?"#6fcf6f":"#8888ff",border:`1px solid ${testSent?C.green:"#444"}`,fontSize:14,fontFamily:"inherit"}}>
@@ -888,4 +888,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
+
 
