@@ -46,7 +46,6 @@ function slotsForBooking(b){
   return slots;
 }
 
-// Save a single booking with slot lock (returns null if slot taken)
 async function fbSaveOne(b){
   const slots=slotsForBooking(b);
   const locksCol=db.collection("_locks"),bookingsCol=db.collection("bookings");
@@ -66,7 +65,6 @@ async function fbSaveOne(b){
   }
 }
 
-// Save one-time booking (throws SLOT_TAKEN if conflict)
 async function fbSave(b){
   const slots=slotsForBooking(b);
   const locksCol=db.collection("_locks"),bookingsCol=db.collection("bookings");
@@ -81,14 +79,12 @@ async function fbSave(b){
   });
 }
 
-// Save a full recurring series — books 1 year out, skips conflicts
 async function fbSaveSeries(baseBooking){
   const intervalDays=INTERVAL_DAYS[baseBooking.recurring];
-  if(!intervalDays) return fbSave(baseBooking); // one-time fallback
+  if(!intervalDays) return fbSave(baseBooking);
   const seriesId=uid();
   const now=new Date();
   const oneYearOut=new Date(now.getFullYear()+1,now.getMonth(),now.getDate());
-  // Generate all dates
   const dates=[];
   let cur=new Date(baseBooking.date+"T12:00:00");
   while(cur<=oneYearOut){
@@ -106,9 +102,7 @@ async function fbSaveSeries(baseBooking){
   return {seriesId,total:dates.length,skipped};
 }
 
-// Extend a series to keep 1 year of future bookings
 async function fbExtendSeries(seriesId,seriesInterval,baseBooking){
-  // Find the latest date in this series
   const snap=await db.collection("bookings").where("seriesId","==",seriesId).get();
   if(snap.empty) return;
   const dates=snap.docs.map(d=>d.data().date).sort();
@@ -125,7 +119,6 @@ async function fbExtendSeries(seriesId,seriesInterval,baseBooking){
   }
 }
 
-// Delete a single booking and its slot locks
 async function fbDeleteOne(id){
   const snap=await db.collection("bookings").doc(id).get();
   if(!snap.exists) return db.collection("bookings").doc(id).delete();
@@ -137,10 +130,8 @@ async function fbDeleteOne(id){
   return batch.commit();
 }
 
-// Delete all bookings in a series
 async function fbDeleteSeries(seriesId){
   const snap=await db.collection("bookings").where("seriesId","==",seriesId).get();
-  // Firestore batch limit is 500 — chunk if needed
   const docs=snap.docs;
   for(let i=0;i<docs.length;i+=400){
     const batch=db.batch();
@@ -155,9 +146,7 @@ async function fbDeleteSeries(seriesId){
   }
 }
 
-// Alias for single delete (kept for compatibility)
 const fbDelete=fbDeleteOne;
-
 const fbListen=cb=>db.collection("bookings").orderBy("at","desc").onSnapshot(s=>cb(s.docs.map(d=>({...d.data(),_id:d.id}))),e=>console.error(e));
 
 const GCAL_KEY="AIzaSyDh4GSy6qYoT9Jtdzu0_BvjOTWxqzypeag";
@@ -269,7 +258,6 @@ function genSlots(ds,serviceDur,calEvents,appBookings,cfg){
       const bS=new Date(y,m-1,d,bh,bmi),bE=new Date(bS.getTime()+bDur*60*1000);
       return dtS<bE&&dtE>bS;
     }))continue;
-    // Skip slots already in the past
     if(dtS<=new Date())continue;
     slots.push(`${String(Math.floor(slotS/60)).padStart(2,"0")}:${String(slotS%60).padStart(2,"0")}`);
   }
@@ -293,13 +281,7 @@ function gCalLink(b){
   const start=`${y}${p(mo)}${p(d)}T${p(h)}${p(mi)}00`;
   const eD=new Date(y,mo-1,d,h,mi+dur);
   const end=`${eD.getFullYear()}${p(eD.getMonth()+1)}${p(eD.getDate())}T${p(eD.getHours())}${p(eD.getMinutes())}00`;
-  const params=new URLSearchParams({
-    action:"TEMPLATE",
-    text:"Appointment at Shear Perfection",
-    dates:`${start}/${end}`,
-    details:`Service: ${b.service}\nNotes: ${b.notes||"None"}`,
-    location:"Shear Perfection Barbershop"
-  });
+  const params=new URLSearchParams({action:"TEMPLATE",text:"Appointment at Shear Perfection",dates:`${start}/${end}`,details:`Service: ${b.service}\nNotes: ${b.notes||"None"}`,location:"Shear Perfection Barbershop"});
   return`https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
@@ -312,7 +294,7 @@ const Dots=()=><div style={{display:"flex",gap:6,justifyContent:"center"}}><span
 // ── PIN ───────────────────────────────────────────────────────────────────────
 function PinScreen({onSuccess,onCancel}){
   const[pin,setPin]=useState(""),[ err,setErr]=useState(false);
-  const tap=d=>{if(pin.length>=4)return;const next=pin+d;setPin(next);if(next.length===4){if(next===OWNER_PIN)onSuccess();else{setErr(true);setTimeout(()=>{setPin("");setErr(false);},700);}}};
+  const tap=d=>{if(pin.length>=4)return;const next=pin+d;setPin(next);if(next.length===4){if(next===OWNER_PIN)onSuccess();else{setErr(true);setTimeout(()=>{setPin("");setErr(false);},700);}};};
   const del=()=>setPin(p=>p.slice(0,-1));
   return(
     <div style={{height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:C.bg,padding:32,gap:24}}>
@@ -357,12 +339,8 @@ function CalendarView({bookings,settings}){
     React.createElement("div",{style:{height:"100%",overflowY:"auto",background:C.bg,padding:16}},
       React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
         React.createElement("div",null,
-          React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:24,letterSpacing:3,color:C.text}},
-            "BOOKING ",React.createElement("span",{style:{color:C.red}},"CALENDAR")
-          ),
-          React.createElement("div",{style:{fontSize:10,color:C.dim,marginTop:2}},
-            gcalLoading?"syncing Google Cal...":gcalEvents.length>0?"● Google Cal synced":settings.calUrl?"● No upcoming Google events":"Add Google Cal URL in ⚙️ to sync"
-          )
+          React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:24,letterSpacing:3,color:C.text}},"BOOKING ",React.createElement("span",{style:{color:C.red}},"CALENDAR")),
+          React.createElement("div",{style:{fontSize:10,color:C.dim,marginTop:2}},gcalLoading?"syncing Google Cal...":gcalEvents.length>0?"● Google Cal synced":settings.calUrl?"● No upcoming Google events":"Add Google Cal URL in ⚙️ to sync")
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
           React.createElement(Btn,{onClick:prevM,style:{background:"#1a1a1a",color:"#ccc",border:`1px solid ${C.border}`,padding:"7px 14px",fontSize:18}},"‹"),
@@ -370,9 +348,7 @@ function CalendarView({bookings,settings}){
           React.createElement(Btn,{onClick:nextM,style:{background:"#1a1a1a",color:"#ccc",border:`1px solid ${C.border}`,padding:"7px 14px",fontSize:18}},"›")
         )
       ),
-      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:2}},
-        DAY_SHORT.map(d=>React.createElement("div",{key:d,style:{textAlign:"center",fontSize:10,color:C.dim,padding:"4px 0",letterSpacing:1,fontWeight:700}},d))
-      ),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:2}},DAY_SHORT.map(d=>React.createElement("div",{key:d,style:{textAlign:"center",fontSize:10,color:C.dim,padding:"4px 0",letterSpacing:1,fontWeight:700}},d))),
       React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:20}},
         cells.map((day,idx)=>{
           if(!day)return React.createElement("div",{key:"e"+idx,style:{minHeight:56}});
@@ -466,8 +442,6 @@ function Settings({settings,onSave,onBack}){
     <div style={{height:"100%",overflowY:"auto",background:C.bg,padding:"20px 20px 60px"}}>
       <div style={{fontFamily:"'Bebas Neue',cursive",fontSize:22,letterSpacing:3,color:C.text,marginBottom:4}}>ESTEBAN'S <span style={{color:C.red}}>SETTINGS</span></div>
       <div style={{fontSize:12,color:C.dim,marginBottom:24}}>Push notifications · Google Calendar · Schedule</div>
-
-      {/* PUSH NOTIFICATIONS */}
       <div style={{marginBottom:28}}>
         <Lbl text="Push Notifications" sub="Booking confirmations + 3pm day-before reminders"/>
         <div style={{background:"#111",border:`1px solid ${C.border}`,padding:"14px 16px",marginBottom:12}}>
@@ -494,8 +468,6 @@ function Settings({settings,onSave,onBack}){
           <div>💡 Clients tap <strong>Allow</strong> after booking to get their reminders</div>
         </div>
       </div>
-
-      {/* GOOGLE CALENDAR */}
       <div style={{marginBottom:28}}>
         <Lbl text="Google Calendar URL" sub="Blocks your existing events from client view"/>
         <div style={{background:"#111",border:`1px solid ${C.border}`,padding:"14px 16px",marginBottom:12}}>
@@ -506,8 +478,6 @@ function Settings({settings,onSave,onBack}){
         {calUrl&&<Btn onClick={testCal} disabled={ct} style={{width:"100%",padding:"13px",background:ct?"#111":"#1a3a1a",color:"#6fcf6f",border:`1px solid ${C.green}`,fontSize:14,fontFamily:"inherit"}}>{ct?"Testing connection...":"Test Calendar Connection"}</Btn>}
         {cm&&<div style={{marginTop:10,padding:"12px 14px",background:cm.ok?"#0d1a00":"#1a0000",border:`1px solid ${cm.ok?C.green:C.red}`,fontSize:13,color:cm.ok?"#6fcf6f":"#ff6b6b",lineHeight:1.6}}>{cm.msg}</div>}
       </div>
-
-      {/* SCHEDULE */}
       <div style={{marginBottom:8}}>
         <div style={{fontSize:11,color:C.red,letterSpacing:2,textTransform:"uppercase",fontWeight:700,marginBottom:4}}>Weekly Schedule</div>
         <div style={{fontSize:12,color:C.dim,marginBottom:14}}>Toggle each day on/off and set your hours</div>
@@ -544,43 +514,49 @@ function BookForm({allBookings,settings}){
   const[step,setStep]=useState(0);const[svc,setSvc]=useState(null);const[date,setDate]=useState("");const[time,setTime]=useState("");
   const[form,setForm]=useState({name:"",phone:"",notes:"",recurring:"One-time"});const[errors,setErrors]=useState({});
   const[slots,setSlots]=useState([]);const[loading,setLoading]=useState(false);const[calWarn,setCalWarn]=useState(false);
+  const[nextAvail,setNextAvail]=useState(null);const[searchingNext,setSearchingNext]=useState(false);
   const[saving,setSaving]=useState(false);const[last,setLast]=useState(null);
   const setF=(k,v)=>setForm(f=>({...f,[k]:v}));
   useEffect(()=>{
     if(!date||!svc)return;setSlots([]);setTime("");setLoading(true);setCalWarn(false);
     (async()=>{let ce=[];if(settings.calUrl){const r=await fetchGCal(settings.calUrl);if(r===null)setCalWarn(true);else ce=r;}setSlots(genSlots(date,svc.duration,ce,allBookings,settings));setLoading(false);})();
   },[date,svc]);
+  useEffect(()=>{
+    if(!svc) return;
+    setNextAvail(null);setSearchingNext(true);
+    (async()=>{
+      let ce=[];
+      if(settings.calUrl){const r=await fetchGCal(settings.calUrl);if(r&&r.length)ce=r;}
+      const today=new Date();
+      for(let d=0;d<14;d++){
+        const dt=new Date(today);dt.setDate(today.getDate()+d);
+        const ds=dt.toISOString().split("T")[0];
+        const slots=genSlots(ds,svc.duration,ce,allBookings,settings);
+        if(slots.length>0){setNextAvail({date:ds,time:slots[0]});break;}
+      }
+      setSearchingNext(false);
+    })();
+  },[svc]);
   const validate=()=>{const e={};if(!form.name.trim())e.name="Required";if(!form.phone.trim())e.phone="Required";setErrors(e);return!Object.keys(e).length;};
   const submit=async()=>{
     if(!validate())return;setSaving(true);
     try{
       const b={...form,service:svc.name,price:svc.price,date,time,at:new Date().toISOString()};
       const isRecurring=form.recurring&&form.recurring!=="One-time";
-      if(isRecurring){
-        await fbSaveSeries(b);
-      } else {
-        await fbSave(b);
-      }
+      if(isRecurring){await fbSaveSeries(b);}else{await fbSave(b);}
       setLast(b);
-      // Push notifications
       if(settings.oneSignalAppId&&settings.oneSignalApiKey){
         const dispDate=new Date(date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
         const dispTime=fmt12(time);
         await sendPush(settings,"💈 New Booking!",`${b.name} booked ${svc.name} — ${dispDate} at ${dispTime}${isRecurring?" ("+form.recurring+")":" "}`);
         const remISO=getReminderISO(date);
-        if(new Date(remISO)>new Date()){
-          await sendPush(settings,"⏰ Appointment Tomorrow",""+`${b.name} — ${svc.name} at ${dispTime}. See you tomorrow! 💈`,remISO);
-        }
+        if(new Date(remISO)>new Date()){await sendPush(settings,"⏰ Appointment Tomorrow",""+`${b.name} — ${svc.name} at ${dispTime}. See you tomorrow! 💈`,remISO);}
         setTimeout(()=>promptPush(),1500);
       }
       setStep(3);
     }catch(e){
-      if(e.message==="SLOT_TAKEN"){
-        alert("⚠️ Sorry, that time slot was just taken by someone else! Please go back and pick a different time.");
-        setTime("");setStep(1);
-      } else {
-        alert("Couldn't save — check connection.");
-      }
+      if(e.message==="SLOT_TAKEN"){alert("⚠️ Sorry, that time slot was just taken by someone else! Please go back and pick a different time.");setTime("");setStep(1);}
+      else{alert("Couldn't save — check connection.");}
     }
     setSaving(false);
   };
@@ -611,6 +587,22 @@ function BookForm({allBookings,settings}){
         <div><div style={{fontSize:11,color:"rgba(255,255,255,0.7)",letterSpacing:1}}>SELECTED</div><div style={{fontFamily:"'Bebas Neue',cursive",fontSize:18,color:"#fff"}}>{svc.name}</div><div style={{fontSize:12,color:"rgba(255,255,255,0.8)",marginTop:2}}>⏱ {svc.duration} min</div></div>
         <div style={{fontFamily:"'Bebas Neue',cursive",fontSize:28,color:"#fff"}}>${svc.price}</div>
       </div>
+      {(searchingNext||nextAvail)&&(
+        <div style={{marginBottom:16,background:"#0a1a0a",border:`1px solid #2a4a2a`,padding:"12px 14px"}}>
+          {searchingNext
+            ?<div style={{fontSize:12,color:"#4a8a4a"}}>🔍 Finding next available slot...</div>
+            :nextAvail&&(
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+                <div>
+                  <div style={{fontSize:10,color:"#4a8a4a",letterSpacing:2,fontWeight:700,marginBottom:2}}>NEXT AVAILABLE</div>
+                  <div style={{fontSize:14,color:"#f0ebe3",fontWeight:700}}>{new Date(nextAvail.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})} · {fmt12(nextAvail.time)}</div>
+                </div>
+                <Btn onClick={()=>{setDate(nextAvail.date);setTime(nextAvail.time);}} style={{background:C.red,color:"#fff",padding:"9px 16px",fontSize:13,fontFamily:"'Bebas Neue',cursive",letterSpacing:1,flexShrink:0}}>BOOK IT</Btn>
+              </div>
+            )
+          }
+        </div>
+      )}
       <div style={{marginBottom:24}}><Lbl text="Pick a Date"/><input type="date" min={todayStr()} value={date} onChange={e=>setDate(e.target.value)} style={IS({colorScheme:"dark"})}/></div>
       {date&&<div style={{marginBottom:28}}>
         <Lbl text="Available Times" sub={`${svc.duration} min · 15-min intervals`}/>
@@ -669,73 +661,42 @@ function Dashboard({bookings,settings}){
   const[deleteModal,setDeleteModal]=useState(null);
   const[extending,setExtending]=useState(false);
   const[gcalEvents,setGcalEvents]=useState([]);
-
-  // Auto-extend series
   useEffect(()=>{
     if(!bookings.length) return;
-    const oneYearOut=new Date();
-    oneYearOut.setFullYear(oneYearOut.getFullYear()+1);
+    const oneYearOut=new Date();oneYearOut.setFullYear(oneYearOut.getFullYear()+1);
     const oneYearStr=oneYearOut.toISOString().split("T")[0];
     const seriesMap={};
-    bookings.forEach(b=>{
-      if(!b.seriesId) return;
-      if(!seriesMap[b.seriesId]) seriesMap[b.seriesId]={latest:"",booking:b};
-      if(b.date>seriesMap[b.seriesId].latest) seriesMap[b.seriesId].latest=b.date;
-    });
+    bookings.forEach(b=>{if(!b.seriesId)return;if(!seriesMap[b.seriesId])seriesMap[b.seriesId]={latest:"",booking:b};if(b.date>seriesMap[b.seriesId].latest)seriesMap[b.seriesId].latest=b.date;});
     const toExtend=Object.entries(seriesMap).filter(([,v])=>v.latest<oneYearStr);
-    if(!toExtend.length) return;
+    if(!toExtend.length)return;
     setExtending(true);
-    (async()=>{
-      for(const[,v] of toExtend){
-        const b=v.booking;
-        if(!b.seriesInterval) continue;
-        try{await fbExtendSeries(b.seriesId||"",b.seriesInterval,b);}catch(e){console.error("extend",e);}
-      }
-      setExtending(false);
-    })();
+    (async()=>{for(const[,v]of toExtend){const b=v.booking;if(!b.seriesInterval)continue;try{await fbExtendSeries(b.seriesId||"",b.seriesInterval,b);}catch(e){console.error("extend",e);}}setExtending(false);})();
   },[bookings.length]);
-
-  // Fetch Google Calendar events for this week
-  useEffect(()=>{
-    if(!settings.calUrl) return;
-    fetchGCal(settings.calUrl).then(evs=>setGcalEvents(evs||[]));
-  },[settings.calUrl]);
-
+  useEffect(()=>{if(!settings.calUrl)return;fetchGCal(settings.calUrl).then(evs=>setGcalEvents(evs||[]));},[settings.calUrl]);
   const confirmDelete=(id,seriesId,name)=>{if(seriesId)setDeleteModal({id,seriesId,name});else doDeleteOne(id);};
   const doDeleteOne=async id=>{setDeleting(id);setDeleteModal(null);try{await fbDeleteOne(id);}catch{alert("Couldn't delete.");}setDeleting(null);};
   const doDeleteSeries=async seriesId=>{setDeleteModal(null);setDeleting(seriesId);try{await fbDeleteSeries(seriesId);}catch{alert("Couldn't delete series.");}setDeleting(null);};
-
-  // ── Week offset state (0=current, -1=last week, +1=next, etc.) ────────────
   const[weekOffset,setWeekOffset]=useState(0);
-
-  // ── Compute week bounds from offset ───────────────────────────────────────
   const now=new Date();
   const dow=now.getDay();
   const diffToMon=dow===0?-6:1-dow;
-  const weekStart=new Date(now);
-  weekStart.setDate(now.getDate()+diffToMon+(weekOffset*7));
-  weekStart.setHours(0,0,0,0);
+  const weekStart=new Date(now);weekStart.setDate(now.getDate()+diffToMon+(weekOffset*7));weekStart.setHours(0,0,0,0);
   const weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);weekEnd.setHours(23,59,59,999);
   const weekStartStr=weekStart.toISOString().split("T")[0];
   const weekEndStr=weekEnd.toISOString().split("T")[0];
   const isCurrentWeek=weekOffset===0;
-
   const todayISO=todayStr();
   const td=new Date().toDateString();
-
-  // Stats
   const todayN=bookings.filter(b=>{try{return new Date(b.at).toDateString()===td;}catch{return false;}}).length;
   const recN=new Set(bookings.filter(b=>b.seriesId).map(b=>b.seriesId)).size;
-
-  // Selected week revenue = app bookings + deduped GCal events
   const weekAppBookings=bookings.filter(b=>b.date>=weekStartStr&&b.date<=weekEndStr);
   const weekAppRev=weekAppBookings.reduce((s,b)=>s+(Number(b.price)||0),0);
   const weekGcalCount=gcalEvents.filter(ev=>{
     const ds=ev.start.split("T")[0];
-    if(ds<weekStartStr||ds>weekEndStr) return false;
+    if(ds<weekStartStr||ds>weekEndStr)return false;
     const gcalTime=ev.start.includes("T")?new Date(ev.start).toTimeString().slice(0,5):null;
     const alreadyBooked=weekAppBookings.some(b=>{
-      if(b.date!==ds||!gcalTime) return false;
+      if(b.date!==ds||!gcalTime)return false;
       const[bh,bm]=b.time.split(":").map(Number);
       const[gh,gm]=gcalTime.split(":").map(Number);
       return Math.abs((bh*60+bm)-(gh*60+gm))<=15;
@@ -743,38 +704,18 @@ function Dashboard({bookings,settings}){
     return !alreadyBooked;
   }).length;
   const weekRev=weekAppRev+(weekGcalCount*40);
-
-  // ── Dedup recurring: only show closest upcoming per series ────────────────
-  const upcomingAll=bookings
-    .filter(b=>b.date>=todayISO)
-    .sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
-
+  const upcomingAll=bookings.filter(b=>b.date>=todayISO).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
   const seenSeries=new Set();
-  const upcoming=upcomingAll.filter(b=>{
-    if(!b.seriesId) return true; // one-time: always show
-    if(seenSeries.has(b.seriesId)) return false; // already have closest for this series
-    seenSeries.add(b.seriesId);
-    return true;
-  });
-
-  // Past: just last 5, most recent first
-  const past=bookings
-    .filter(b=>b.date<todayISO)
-    .sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time))
-    .slice(0,5);
-
+  const upcoming=upcomingAll.filter(b=>{if(!b.seriesId)return true;if(seenSeries.has(b.seriesId))return false;seenSeries.add(b.seriesId);return true;});
+  const past=bookings.filter(b=>b.date<todayISO).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)).slice(0,5);
   const weekLabel=`${weekStart.toLocaleDateString("en-US",{month:"short",day:"numeric"})} – ${weekEnd.toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;
-
   return(
     <div style={{height:"100%",overflowY:"auto",background:C.bg,padding:16}}>
-      {/* Delete modal */}
       {deleteModal&&(
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
           <div style={{background:"#161616",border:`1px solid ${C.red}`,padding:24,width:"100%",maxWidth:340}}>
             <div style={{fontFamily:"'Bebas Neue',cursive",fontSize:18,letterSpacing:2,color:C.text,marginBottom:8}}>DELETE APPOINTMENT</div>
-            <div style={{fontSize:13,color:"#aaa",marginBottom:20,lineHeight:1.7}}>
-              <strong style={{color:"#f0ebe3"}}>{deleteModal.name}</strong> has a recurring series. What would you like to delete?
-            </div>
+            <div style={{fontSize:13,color:"#aaa",marginBottom:20,lineHeight:1.7}}><strong style={{color:"#f0ebe3"}}>{deleteModal.name}</strong> has a recurring series. What would you like to delete?</div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               <Btn onClick={()=>doDeleteOne(deleteModal.id)} style={{padding:"13px",background:"#1a1a1a",color:"#f0ebe3",border:`1px solid ${C.border}`,fontSize:14,fontFamily:"inherit",textAlign:"left"}}>
                 <div style={{fontWeight:700}}>Just this appointment</div>
@@ -789,13 +730,10 @@ function Dashboard({bookings,settings}){
           </div>
         </div>
       )}
-
       <div style={{marginBottom:16}}>
         <div style={{fontFamily:"'Bebas Neue',cursive",fontSize:24,letterSpacing:3,color:C.text}}>ESTEBAN'S <span style={{color:C.red}}>DASHBOARD</span></div>
         <div style={{fontSize:10,color:C.dim,letterSpacing:2}}>🔴 LIVE · SYNCS ACROSS ALL DEVICES{extending&&" · extending series..."}</div>
       </div>
-
-      {/* Stats */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:18}}>
         {[{l:"Total Bookings",v:bookings.length},{l:"Today",v:todayN},{l:"Recurring Clients",v:recN}].map(s=>(
           <div key={s.l} style={{background:C.card,border:`1px solid ${C.border}`,padding:"12px 14px"}}>
@@ -803,7 +741,6 @@ function Dashboard({bookings,settings}){
             <div style={{fontSize:10,color:"#888",letterSpacing:1,textTransform:"uppercase",marginTop:3}}>{s.l}</div>
           </div>
         ))}
-        {/* Weekly revenue — navigable */}
         <div style={{background:C.card,border:`1px solid ${C.border}`,padding:"12px 14px",gridColumn:"span 2"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
             <div style={{fontSize:10,color:"#888",letterSpacing:1,textTransform:"uppercase"}}>Est. Week Revenue</div>
@@ -823,7 +760,6 @@ function Dashboard({bookings,settings}){
           </div>
         </div>
       </div>
-
       {bookings.length===0?(
         <div style={{textAlign:"center",padding:"40px 20px",border:`1px dashed ${C.border}`,color:"#666"}}>
           <div style={{fontSize:32,marginBottom:8}}>📅</div>
@@ -835,17 +771,13 @@ function Dashboard({bookings,settings}){
           {upcoming.length>0&&(
             <div>
               <div style={{fontSize:10,color:C.red,letterSpacing:2,fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Upcoming ({upcoming.length})</div>
-              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-                {upcoming.map(b=>renderBookingCard(b,deleting,deleteModal,confirmDelete))}
-              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>{upcoming.map(b=>renderBookingCard(b,deleting,deleteModal,confirmDelete))}</div>
             </div>
           )}
           {past.length>0&&(
             <div>
               <div style={{fontSize:10,color:"#555",letterSpacing:2,fontWeight:700,marginBottom:8,textTransform:"uppercase"}}>Recent Past</div>
-              <div style={{display:"flex",flexDirection:"column",gap:8,opacity:0.5}}>
-                {past.map(b=>renderBookingCard(b,deleting,deleteModal,confirmDelete))}
-              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:8,opacity:0.5}}>{past.map(b=>renderBookingCard(b,deleting,deleteModal,confirmDelete))}</div>
             </div>
           )}
         </div>
@@ -862,10 +794,7 @@ function renderBookingCard(b,deleting,deleteModal,confirmDelete){
       <div style={{width:3,alignSelf:"stretch",background:b.seriesId?"#2a6aaa":"#8B0000",flexShrink:0}}/>
       <div style={{flex:1,minWidth:0}}>
         <div style={{display:"flex",justifyContent:"space-between",gap:6,alignItems:"flex-start"}}>
-          <div>
-            <div style={{fontWeight:700,fontSize:15,color:"#f0ebe3"}}>{b.name}</div>
-            <div style={{fontSize:12,color:"#888",marginTop:2}}>{b.phone}</div>
-          </div>
+          <div><div style={{fontWeight:700,fontSize:15,color:"#f0ebe3"}}>{b.name}</div><div style={{fontSize:12,color:"#888",marginTop:2}}>{b.phone}</div></div>
           <div style={{background:"#8B0000",color:"#fff",fontSize:11,fontWeight:700,padding:"3px 8px",flexShrink:0}}>${b.price}</div>
         </div>
         <div style={{fontSize:13,color:"#bbb",marginTop:5}}>{b.service}</div>
@@ -891,7 +820,6 @@ function renderBookingCard(b,deleting,deleteModal,confirmDelete){
 function GCalEmbed({settings}){
   const calId=extractCalendarId(settings.calUrl||"");
   const[view,setView]=useState("week");
-
   if(!calId)return(
     <div style={{height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:C.bg,padding:32,textAlign:"center",gap:16}}>
       <div style={{fontSize:36}}>🗓</div>
@@ -899,9 +827,7 @@ function GCalEmbed({settings}){
       <div style={{fontSize:13,color:C.dim,lineHeight:1.8,maxWidth:280}}>Add your Google Calendar iCal URL in ⚙️ Settings to see your calendar here.</div>
     </div>
   );
-
   const embedUrl=`https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calId)}&mode=${view.toUpperCase()}&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&bgcolor=%230c0c0c&color=%238B0000`;
-
   return(
     <div style={{height:"100%",display:"flex",flexDirection:"column",background:C.bg}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
@@ -916,12 +842,7 @@ function GCalEmbed({settings}){
         </div>
       </div>
       <div style={{flex:1,overflow:"hidden"}}>
-        <iframe
-          src={embedUrl}
-          style={{width:"100%",height:"100%",border:"none",filter:"invert(0.9) hue-rotate(180deg) saturate(0.8)"}}
-          frameBorder="0"
-          scrolling="no"
-        />
+        <iframe src={embedUrl} style={{width:"100%",height:"100%",border:"none",filter:"invert(0.9) hue-rotate(180deg) saturate(0.8)"}} frameBorder="0" scrolling="no"/>
       </div>
     </div>
   );
@@ -939,11 +860,9 @@ function App(){
   },[]);
   useEffect(()=>{if(!ready)return;return fbListen(setBookings);},[ready]);
   useEffect(()=>{if(isOwner){setTimeout(async()=>{await promptPush();await tagOwner();},1200);}},[isOwner]);
-
   if(dbErr)return(<div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:C.bg,padding:32,textAlign:"center",gap:16}}><div style={{fontSize:40}}>⚠️</div><div style={{fontFamily:"'Bebas Neue',cursive",fontSize:20,letterSpacing:2,color:"#ff6b6b"}}>DATABASE ERROR</div><div style={{fontSize:13,color:C.dim,lineHeight:1.9,maxWidth:320}}>Go to Firebase Console → Firestore → Rules and publish:</div><div style={{background:"#111",padding:"14px 16px",textAlign:"left",fontSize:12,color:C.green,fontFamily:"monospace",width:"100%",maxWidth:340,lineHeight:1.8}}>{"rules_version = '2';"}<br/>{"service cloud.firestore {"}<br/>&nbsp;&nbsp;{"match /databases/{database}/documents {"}<br/>&nbsp;&nbsp;&nbsp;&nbsp;{"match /{document=**} {"}<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{"allow read, write: if true;"}<br/>&nbsp;&nbsp;&nbsp;&nbsp;{"}"}<br/>&nbsp;&nbsp;{"}"}<br/>{"}"}</div></div>);
   if(!ready)return(<div style={{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:C.bg,gap:16}}><div style={{fontSize:40}}>💈</div><Dots/><div style={{fontSize:13,color:C.dim}}>Connecting...</div></div>);
   if(showPin)return(<PinScreen onSuccess={()=>{setIsOwner(true);setShowPin(false);setOwnerView("dash");}} onCancel={()=>setShowPin(false)}/>);
-
   if(isOwner)return(
     <div style={{width:"100%",height:"100vh",display:"flex",flexDirection:"column",background:C.bg,color:C.text}}>
       <div style={{display:"flex",background:"#080808",borderBottom:"1px solid #1a1a1a",flexShrink:0}}>
@@ -963,7 +882,6 @@ function App(){
       </div>
     </div>
   );
-
   return(
     <div style={{width:"100%",height:"100vh",display:"flex",flexDirection:"column",background:C.bg,color:C.text}}>
       <div style={{flex:1,overflow:"hidden"}}><BookForm allBookings={bookings} settings={settings}/></div>
