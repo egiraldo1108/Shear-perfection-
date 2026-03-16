@@ -200,7 +200,7 @@ function loadOneSignal(appId){
     catch(e){console.error("OneSignal init",e);}
   });
 }
-async function promptPush(){try{if(window.OneSignal)await window.OneSignal.Slidedown.promptPush();}catch(e){console.error("prompt",e);}}
+async function promptPush(){try{if(window.OneSignal)await window.OneSignal.Notifications.requestPermission();}catch(e){console.error("prompt",e);}}
 async function tagOwner(){try{if(window.OneSignal)await window.OneSignal.User.addTag("role","owner");}catch{}}
 async function sendPush(cfg,title,body,sendAfterISO=null){
   if(!cfg.oneSignalAppId||!cfg.oneSignalApiKey)return;
@@ -453,6 +453,7 @@ function Settings({settings,onSave,onBack}){
             {testSent?"✅ Sent! Check your phone":"🔔 Send Test Notification"}
           </Btn>
         )}
+        <Btn onClick={async()=>{await promptPush();}} style={{width:"100%",padding:"13px",background:"#1a0a0a",color:"#ff8888",border:"1px solid #8B0000",fontSize:14,fontFamily:"inherit",marginTop:8}}>🔔 Enable Notifications on This Device</Btn>
         <div style={{marginTop:10,padding:"10px 14px",background:"#0a0a18",border:`1px solid #2a2a4a`,fontSize:12,color:"#8888cc",lineHeight:1.8}}>
           <div style={{fontWeight:700,marginBottom:4,color:"#aaaaee"}}>What gets sent automatically:</div>
           <div>📲 You + client both notified instantly on every new booking</div>
