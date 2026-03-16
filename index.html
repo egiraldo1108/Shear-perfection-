@@ -412,6 +412,8 @@ function Settings({settings,onSave,onBack}){
   const[ct,setCt]=useState(false);
   const[cm,setCm]=useState(null);
   const[testSent,setTestSent]=useState(false);
+const[notifStatus,setNotifStatus]=useState(()=>typeof Notification!=="undefined"?Notification.permission:"unknown");
+const[notifLog,setNotifLog]=useState("");
   const toggleDay=i=>setDayHours(h=>({...h,[i]:{...h[i],open:!h[i].open}}));
   const setHour=(i,key,val)=>setDayHours(h=>({...h,[i]:{...h[i],[key]:Number(val)}}));
   const testCal=async()=>{
