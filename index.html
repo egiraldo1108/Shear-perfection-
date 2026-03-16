@@ -31,7 +31,6 @@ const{useState,useEffect,useCallback}=React;
 firebase.initializeApp({apiKey:"AIzaSyBl8f_QtWgT2SdeSVVNbmmHvs5eAM8p-H8",authDomain:"shear-perfection-barbershop.firebaseapp.com",projectId:"shear-perfection-barbershop",storageBucket:"shear-perfection-barbershop.firebasestorage.app",messagingSenderId:"99950197287",appId:"1:99950197287:web:c2c43a0cb289e4563b2c02"});
 const db=firebase.firestore();
 
-// ── RECURRING HELPERS ─────────────────────────────────────────────────────────
 const INTERVAL_DAYS={"Weekly":7,"Bi-Weekly":14,"Every 3 Weeks":21,"Every 4 Weeks":28};
 function uid(){return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);}
 
@@ -155,14 +154,14 @@ const OWNER_PIN="1108";
 const SERVICES=[
   {name:"Men's / Young Men's Haircut",price:40,duration:30},
   {name:"Men's Haircut w/ Beard",price:50,duration:30},
-  {name:"Men's Overgrown Service",price:50,duration:60},
+  {name:"Men's Overgrown Service",price:60,duration:60},
   {name:"Kid's Cut (Under 10)",price:35,duration:30},
-  {name:"Line Up",price:25,duration:15},
+  {name:"Line Up",price:25,duration:20},
   {name:"Line Up w/ Beard",price:30,duration:30},
   {name:"Premium Beard",price:35,duration:30},
-  {name:"Bald Head",price:20,duration:15},
-  {name:"Bald Head w/ Beard",price:40,duration:30},
-  {name:"Men's Hair Dye Service",price:15,duration:15},
+  {name:"Bald Head",price:20,duration:25},
+  {name:"Bald Head w/ Beard",price:40,duration:40},
+  {name:"Men's Hair Dye Service",price:45,duration:90},
   {name:"Hair Designs (Small)",price:20,duration:30},
 ];
 const RECURRING=["One-time","Weekly","Bi-Weekly","Every 3 Weeks","Every 4 Weeks"];
@@ -191,7 +190,6 @@ function useLS(key,def){
 const fmt12=t=>{if(!t)return"";const[h,m]=t.split(":").map(Number);return`${h%12||12}:${String(m).padStart(2,"0")} ${h>=12?"PM":"AM"}`;};
 const todayStr=()=>new Date().toISOString().split("T")[0];
 
-// ── ONESIGNAL ─────────────────────────────────────────────────────────────────
 let osLoaded=false;
 function loadOneSignal(appId){
   if(osLoaded||!appId)return;osLoaded=true;
@@ -208,7 +206,7 @@ async function sendPush(cfg,title,body,sendAfterISO=null){
   if(!cfg.oneSignalAppId||!cfg.oneSignalApiKey)return;
   const payload={app_id:cfg.oneSignalAppId,included_segments:["All"],headings:{en:title},contents:{en:body}};
   if(sendAfterISO)payload.send_after=sendAfterISO;
-  try{await fetch("https://onesignal.com/api/v1/notifications",{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Basic ${cfg.oneSignalApiKey}`},body:JSON.stringify(payload)});}
+  try{await fetch("https://onesignal.com/api/v1/notifications",{method:"POST",headers:{"Content-Type":"application/json","Authorization":`key ${cfg.oneSignalApiKey}`},body:JSON.stringify(payload)});}
   catch(e){console.error("Push failed",e);}
 }
 function getReminderISO(dateStr){
@@ -216,7 +214,6 @@ function getReminderISO(dateStr){
   return new Date(y,m-1,d-1,15,0,0,0).toISOString();
 }
 
-// ── GOOGLE CAL ────────────────────────────────────────────────────────────────
 function extractCalendarId(url){
   if(!url)return null;
   const m=url.match(/\/ical\/([^\/]+)\//);
@@ -239,7 +236,6 @@ async function fetchGCal(url){
   }catch(e){console.error("GCal err",e);return null;}
 }
 
-// ── SLOTS ─────────────────────────────────────────────────────────────────────
 function genSlots(ds,serviceDur,calEvents,appBookings,cfg){
   const[y,m,d]=ds.split("-").map(Number);
   const dow=new Date(y,m-1,d).getDay();
@@ -264,7 +260,6 @@ function genSlots(ds,serviceDur,calEvents,appBookings,cfg){
   return slots;
 }
 
-// ── ICS ───────────────────────────────────────────────────────────────────────
 function makeICS(b){
   const sv=SERVICES.find(s=>s.name===b.service),dur=sv?.duration||30;
   const[y,mo,d]=b.date.split("-").map(Number),[h,mi]=b.time.split(":").map(Number);
@@ -285,13 +280,11 @@ function gCalLink(b){
   return`https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-// ── UI ATOMS ──────────────────────────────────────────────────────────────────
 const Lbl=({text,err,sub})=><div style={{marginBottom:6}}><div style={{fontSize:11,color:err?"#ff6b6b":C.red,letterSpacing:2,textTransform:"uppercase",fontWeight:700}}>{text}{err?` — ${err}`:""}</div>{sub&&<div style={{fontSize:12,color:C.dim,marginTop:2}}>{sub}</div>}</div>;
 const IS=(x={})=>({width:"100%",background:"#1a1a1a",border:`1px solid ${C.border}`,color:"#f0ebe3",padding:"13px 14px",fontSize:16,outline:"none",fontFamily:"inherit",borderRadius:0,WebkitAppearance:"none",...x});
 const Btn=({onClick,disabled,children,style={}})=><button onClick={onClick} disabled={disabled} style={{fontFamily:"inherit",cursor:disabled?"default":"pointer",touchAction:"manipulation",border:"none",fontWeight:700,...style}}>{children}</button>;
 const Dots=()=><div style={{display:"flex",gap:6,justifyContent:"center"}}><span className="dot"/><span className="dot"/><span className="dot"/></div>;
 
-// ── PIN ───────────────────────────────────────────────────────────────────────
 function PinScreen({onSuccess,onCancel}){
   const[pin,setPin]=useState(""),[ err,setErr]=useState(false);
   const tap=d=>{if(pin.length>=4)return;const next=pin+d;setPin(next);if(next.length===4){if(next===OWNER_PIN)onSuccess();else{setErr(true);setTimeout(()=>{setPin("");setErr(false);},700);}};};
@@ -310,7 +303,6 @@ function PinScreen({onSuccess,onCancel}){
   );
 }
 
-// ── CALENDAR VIEW (owner only) ────────────────────────────────────────────────
 function CalendarView({bookings,settings}){
   const now=new Date();
   const[viewYear,setViewYear]=useState(now.getFullYear());
@@ -446,15 +438,15 @@ function Settings({settings,onSave,onBack}){
         <Lbl text="Push Notifications" sub="Booking confirmations + 3pm day-before reminders"/>
         <div style={{background:"#111",border:`1px solid ${C.border}`,padding:"14px 16px",marginBottom:12}}>
           <div style={{fontSize:11,color:C.red,fontWeight:700,letterSpacing:2,marginBottom:10}}>SETUP (FREE · 5 MINS)</div>
-          {["1. Go to onesignal.com → sign up free","2. New App → Web → enter your site URL","3. Choose 'Custom Code' setup","4. Copy your App ID → paste below","5. Go to Keys & IDs → copy REST API Key → paste below","6. Add OneSignalSDKWorker.js file to your GitHub repo root (download from OneSignal)","7. Save Settings, then tap Allow when the popup appears on your phone"].map(s=><div key={s} style={{fontSize:12,color:C.muted,paddingBottom:5,lineHeight:1.5}}>{s}</div>)}
+          {["1. Go to onesignal.com → sign up free","2. New App → Web → enter your site URL","3. Choose 'Custom Code' setup","4. Copy your App ID → paste below","5. Go to Keys & IDs → copy App API Key → paste below","6. Add OneSignalSDKWorker.js file to your GitHub repo root","7. Save Settings, then tap Allow when the popup appears"].map(s=><div key={s} style={{fontSize:12,color:C.muted,paddingBottom:5,lineHeight:1.5}}>{s}</div>)}
         </div>
         <div style={{marginBottom:10}}>
           <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>APP ID</div>
           <input style={IS({marginBottom:10})} value={osAppId} onChange={e=>setOsAppId(e.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autoCapitalize="none" autoCorrect="off" spellCheck={false}/>
         </div>
         <div style={{marginBottom:12}}>
-          <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>REST API KEY</div>
-          <input style={IS()} value={osApiKey} onChange={e=>setOsApiKey(e.target.value)} placeholder="REST API Key from Keys & IDs" autoCapitalize="none" autoCorrect="off" spellCheck={false} type="password"/>
+          <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>APP API KEY</div>
+          <input style={IS()} value={osApiKey} onChange={e=>setOsApiKey(e.target.value)} placeholder="App API Key from Keys & IDs" autoCapitalize="none" autoCorrect="off" spellCheck={false} type="password"/>
         </div>
         {osAppId&&osApiKey&&(
           <Btn onClick={testPush} style={{width:"100%",padding:"13px",background:testSent?"#0d1a00":"#0d0d2a",color:testSent?"#6fcf6f":"#8888ff",border:`1px solid ${testSent?C.green:"#444"}`,fontSize:14,fontFamily:"inherit"}}>
@@ -509,7 +501,6 @@ function Settings({settings,onSave,onBack}){
   );
 }
 
-// ── BOOK FORM ─────────────────────────────────────────────────────────────────
 function BookForm({allBookings,settings}){
   const[step,setStep]=useState(0);const[svc,setSvc]=useState(null);const[date,setDate]=useState("");const[time,setTime]=useState("");
   const[form,setForm]=useState({name:"",phone:"",notes:"",recurring:"One-time"});const[errors,setErrors]=useState({});
@@ -522,7 +513,7 @@ function BookForm({allBookings,settings}){
     (async()=>{let ce=[];if(settings.calUrl){const r=await fetchGCal(settings.calUrl);if(r===null)setCalWarn(true);else ce=r;}setSlots(genSlots(date,svc.duration,ce,allBookings,settings));setLoading(false);})();
   },[date,svc]);
   useEffect(()=>{
-    if(!svc) return;
+    if(!svc)return;
     setNextAvail(null);setSearchingNext(true);
     (async()=>{
       let ce=[];
@@ -655,14 +646,13 @@ function BookForm({allBookings,settings}){
   );
 }
 
-// ── DASHBOARD ─────────────────────────────────────────────────────────────────
 function Dashboard({bookings,settings}){
   const[deleting,setDeleting]=useState(null);
   const[deleteModal,setDeleteModal]=useState(null);
   const[extending,setExtending]=useState(false);
   const[gcalEvents,setGcalEvents]=useState([]);
   useEffect(()=>{
-    if(!bookings.length) return;
+    if(!bookings.length)return;
     const oneYearOut=new Date();oneYearOut.setFullYear(oneYearOut.getFullYear()+1);
     const oneYearStr=oneYearOut.toISOString().split("T")[0];
     const seriesMap={};
@@ -816,7 +806,6 @@ function renderBookingCard(b,deleting,deleteModal,confirmDelete){
   );
 }
 
-// ── GCAL EMBED (owner only) ───────────────────────────────────────────────────
 function GCalEmbed({settings}){
   const calId=extractCalendarId(settings.calUrl||"");
   const[view,setView]=useState("week");
@@ -848,7 +837,6 @@ function GCalEmbed({settings}){
   );
 }
 
-// ── APP ───────────────────────────────────────────────────────────────────────
 function App(){
   const[settings,setSettingsState]=useState(DEF);const[bookings,setBookings]=useState([]);const[ready,setReady]=useState(false);
   const[dbErr,setDbErr]=useState(false);const[isOwner,setIsOwner]=useLS("sp_owner",false);const[showPin,setShowPin]=useState(false);const[ownerView,setOwnerView]=useState("dash");
@@ -900,3 +888,4 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
+
