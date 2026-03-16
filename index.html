@@ -200,7 +200,7 @@ function loadOneSignal(appId){
     catch(e){console.error("OneSignal init",e);}
   });
 }
-async function promptPush(){try{if(window.OneSignal)await window.OneSignal.Notifications.requestPermission();}catch(e){console.error("prompt",e);}}
+async function promptPush(){try{if(window.OneSignal)await window.OneSignal.Slidedown.promptPush();}catch(e){console.error("prompt",e);}}
 async function tagOwner(){try{if(window.OneSignal)await window.OneSignal.User.addTag("role","owner");}catch{}}
 async function sendPush(cfg,title,body,sendAfterISO=null){
   if(!cfg.oneSignalAppId||!cfg.oneSignalApiKey)return;
@@ -412,8 +412,8 @@ function Settings({settings,onSave,onBack}){
   const[ct,setCt]=useState(false);
   const[cm,setCm]=useState(null);
   const[testSent,setTestSent]=useState(false);
-const[notifStatus,setNotifStatus]=useState(()=>typeof Notification!=="undefined"?Notification.permission:"unknown");
-const[notifLog,setNotifLog]=useState("");
+  const[notifStatus,setNotifStatus]=useState(()=>typeof Notification!=="undefined"?Notification.permission:"unknown");
+  const[notifLog,setNotifLog]=useState("");
   const toggleDay=i=>setDayHours(h=>({...h,[i]:{...h[i],open:!h[i].open}}));
   const setHour=(i,key,val)=>setDayHours(h=>({...h,[i]:{...h[i],[key]:Number(val)}}));
   const testCal=async()=>{
@@ -440,15 +440,15 @@ const[notifLog,setNotifLog]=useState("");
         <Lbl text="Push Notifications" sub="Booking confirmations + 3pm day-before reminders"/>
         <div style={{background:"#111",border:`1px solid ${C.border}`,padding:"14px 16px",marginBottom:12}}>
           <div style={{fontSize:11,color:C.red,fontWeight:700,letterSpacing:2,marginBottom:10}}>SETUP (FREE · 5 MINS)</div>
-          {["1. Go to onesignal.com → sign up free","2. New App → Web → enter your site URL","3. Choose 'Custom Code' setup","4. Copy your App ID → paste below","5. Go to Keys & IDs → create App API Key → paste below","6. Add OneSignalSDKWorker.js file to your GitHub repo root","7. Save Settings, then open app from Home Screen and tap Allow"].map(s=><div key={s} style={{fontSize:12,color:C.muted,paddingBottom:5,lineHeight:1.5}}>{s}</div>)}
+          {["1. Go to onesignal.com → sign up free","2. New App → Web → enter your site URL","3. Choose 'Custom Code' setup","4. Copy your App ID → paste below","5. Go to Keys & IDs → copy REST API Key → paste below","6. Add OneSignalSDKWorker.js file to your GitHub repo root","7. Save Settings, then tap Allow when the popup appears on your phone"].map(s=><div key={s} style={{fontSize:12,color:C.muted,paddingBottom:5,lineHeight:1.5}}>{s}</div>)}
         </div>
         <div style={{marginBottom:10}}>
           <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>APP ID</div>
           <input style={IS({marginBottom:10})} value={osAppId} onChange={e=>setOsAppId(e.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autoCapitalize="none" autoCorrect="off" spellCheck={false}/>
         </div>
         <div style={{marginBottom:12}}>
-          <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>API KEY</div>
-          <input style={IS()} value={osApiKey} onChange={e=>setOsApiKey(e.target.value)} placeholder="os_v2_app_..." autoCapitalize="none" autoCorrect="off" spellCheck={false} type="password"/>
+          <div style={{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}}>REST API KEY</div>
+          <input style={IS()} value={osApiKey} onChange={e=>setOsApiKey(e.target.value)} placeholder="REST API Key from Keys & IDs" autoCapitalize="none" autoCorrect="off" spellCheck={false} type="password"/>
         </div>
         {osAppId&&osApiKey&&(
           <Btn onClick={testPush} style={{width:"100%",padding:"13px",background:testSent?"#0d1a00":"#0d0d2a",color:testSent?"#6fcf6f":"#8888ff",border:`1px solid ${testSent?C.green:"#444"}`,fontSize:14,fontFamily:"inherit"}}>
@@ -456,26 +456,27 @@ const[notifLog,setNotifLog]=useState("");
           </Btn>
         )}
         <div style={{marginTop:8,background:"#0f0f0f",border:`1px solid ${notifStatus==="granted"?C.green:C.red}`,padding:"14px"}}>
-  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-    <div style={{fontSize:13,color:"#f0ebe3",fontWeight:700}}>🔔 Push Notifications</div>
-    <Btn onClick={async()=>{
-      setNotifLog("Checking OneSignal...");
-      if(!window.OneSignal){setNotifLog("❌ OneSignal not loaded");return;}
-      setNotifLog("OneSignal found. Requesting permission...");
-      try{
-        const result=await window.OneSignal.Notifications.requestPermission();
-        setNotifStatus(Notification.permission);
-        setNotifLog("Result: "+JSON.stringify(result)+" | Permission: "+Notification.permission);
-      }catch(e){setNotifLog("❌ Error: "+e.message);}
-    }} style={{padding:"8px 18px",background:notifStatus==="granted"?C.green:C.red,color:"#fff",fontSize:12,fontFamily:"inherit",fontWeight:700}}>
-      {notifStatus==="granted"?"ON":"OFF"}
-    </Btn>
-  </div>
-  <div style={{fontSize:10,color:"#888",marginBottom:notifLog?6:0}}>
-    {notifStatus==="granted"?"Notifications enabled on this device":notifStatus==="denied"?"Blocked — go to iPhone Settings → Shear Perfection → Notifications":"Tap OFF to enable"}
-  </div>
-  {notifLog&&<div style={{fontSize:10,color:"#6fcf6f",fontFamily:"monospace",wordBreak:"break-all"}}>{notifLog}</div>}
-</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <div style={{fontSize:13,color:"#f0ebe3",fontWeight:700}}>🔔 Notifications on this device</div>
+            <Btn onClick={async()=>{
+              const savedId=typeof osAppId!=="undefined"?osAppId:"none";
+              setNotifLog("AppID: "+savedId+" | OneSignal: "+(!!window.OneSignal)+" | osLoaded: "+osLoaded);
+              if(!window.OneSignal){return;}
+              setNotifLog(prev=>prev+" | Requesting...");
+              try{
+                const result=await window.OneSignal.Notifications.requestPermission();
+                setNotifStatus(Notification.permission);
+                setNotifLog(prev=>prev+" | Result: "+JSON.stringify(result)+" | Perm: "+Notification.permission);
+              }catch(e){setNotifLog(prev=>prev+" | Error: "+e.message);}
+            }} style={{padding:"8px 18px",background:notifStatus==="granted"?C.green:C.red,color:"#fff",fontSize:12,fontFamily:"inherit",fontWeight:700}}>
+              {notifStatus==="granted"?"ON":"OFF"}
+            </Btn>
+          </div>
+          <div style={{fontSize:10,color:"#888",marginBottom:notifLog?6:0}}>
+            {notifStatus==="granted"?"Enabled ✅":notifStatus==="denied"?"Blocked — go to iPhone Settings → Shear Perfection → Notifications":"Tap OFF to enable"}
+          </div>
+          {notifLog&&<div style={{fontSize:10,color:"#6fcf6f",fontFamily:"monospace",wordBreak:"break-all",marginTop:4}}>{notifLog}</div>}
+        </div>
         <div style={{marginTop:10,padding:"10px 14px",background:"#0a0a18",border:`1px solid #2a2a4a`,fontSize:12,color:"#8888cc",lineHeight:1.8}}>
           <div style={{fontWeight:700,marginBottom:4,color:"#aaaaee"}}>What gets sent automatically:</div>
           <div>📲 You + client both notified instantly on every new booking</div>
@@ -866,7 +867,7 @@ function App(){
   const setSettings=async s=>{setSettingsState(s);try{await fbSaveSettings(s);}catch(e){console.error(e);}};
   useEffect(()=>{
     db.collection("_ping").doc("t").set({t:Date.now()})
-      .then(async()=>{const s=await fbGetSettings();setSettingsState(s);if(s.oneSignalAppId)loadOneSignal(s.oneSignalAppId);setReady(true);db.collection("_ping").doc("t").delete();})
+      .then(async()=>{const s=await fbGetSettings();setSettingsState(s);if(s.oneSignalAppId){console.log("Loading OS with:",s.oneSignalAppId);loadOneSignal(s.oneSignalAppId);}else{console.log("No App ID in settings");}setReady(true);db.collection("_ping").doc("t").delete();})
       .catch(()=>setDbErr(true));
   },[]);
   useEffect(()=>{if(!ready)return;return fbListen(setBookings);},[ready]);
@@ -911,6 +912,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
+
 
 
 
