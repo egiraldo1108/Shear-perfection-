@@ -674,6 +674,7 @@ function Dashboard({bookings,settings}){
   const weekGcalCount=gcalEvents.filter(ev=>{
     const ds=ev.start.split("T")[0];
     if(ds<weekStartStr||ds>weekEndStr)return false;
+    if(ev.title&&ev.title.toLowerCase()==="kayla")return false;
     const gcalTime=ev.start.includes("T")?new Date(ev.start).toTimeString().slice(0,5):null;
     return !weekAppBookings.some(b=>{
       if(b.date!==ds||!gcalTime)return false;
