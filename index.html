@@ -65,7 +65,7 @@ const fbGetSettings=async()=>{
 try{const d=await db.collection(”_config”).doc(“settings”).get();
 if(d.exists){const data=d.data();if(!data.dayHours)data.dayHours=mkDefaultDayHours();return {…DEF,…data};}
 return DEF;
-}catch{return DEF;}
+}catch(e){return DEF;}
 };
 const fbSaveSettings=s=>db.collection(”_config”).doc(“settings”).set(s);
 
@@ -265,8 +265,8 @@ return”https://calendar.google.com/calendar/render?action=TEMPLATE”
 
 // ── UI ATOMS ──────────────────────────────────────────────────────────────────
 function useLS(key,def){
-const[v,setV]=useState(()=>{try{const x=localStorage.getItem(key);return x?JSON.parse(x):def;}catch{return def;}});
-const set=useCallback(fn=>setV(p=>{const n=typeof fn===“function”?fn(p):fn;try{localStorage.setItem(key,JSON.stringify(n));}catch{}return n;}),[key]);
+const[v,setV]=useState(()=>{try{const x=localStorage.getItem(key);return x?JSON.parse(x):def;}catch(e){return def;}});
+const set=useCallback(fn=>setV(p=>{const n=typeof fn===“function”?fn(p):fn;try{localStorage.setItem(key,JSON.stringify(n));}catch(e){}return n;}),[key]);
 return[v,set];
 }
 const Lbl=({text,err,sub})=><div style={{marginBottom:6}}><div style={{fontSize:11,color:err?”#ff6b6b”:C.red,letterSpacing:2,textTransform:“uppercase”,fontWeight:700}}>{text}{err?` — ${err}`:””}</div>{sub&&<div style={{fontSize:12,color:C.dim,marginTop:2}}>{sub}</div>}</div>;
@@ -704,8 +704,8 @@ setExtending(true);
 useEffect(()=>{if(!settings.calUrl)return;fetchGCal(settings.calUrl).then(evs=>setGcalEvents(evs||[]));},[settings.calUrl]);
 
 const confirmDelete=(id,seriesId,name)=>{if(seriesId)setDeleteModal({id,seriesId,name});else doDeleteOne(id);};
-const doDeleteOne=async id=>{setDeleting(id);setDeleteModal(null);try{await fbDeleteOne(id);}catch{alert(“Couldn’t delete.”);}setDeleting(null);};
-const doDeleteSeries=async seriesId=>{setDeleteModal(null);setDeleting(seriesId);try{await fbDeleteSeries(seriesId);}catch{alert(“Couldn’t delete series.”);}setDeleting(null);};
+const doDeleteOne=async id=>{setDeleting(id);setDeleteModal(null);try{await fbDeleteOne(id);}catch(e){alert(“Couldn’t delete.”);}setDeleting(null);};
+const doDeleteSeries=async seriesId=>{setDeleteModal(null);setDeleting(seriesId);try{await fbDeleteSeries(seriesId);}catch(e){alert(“Couldn’t delete series.”);}setDeleting(null);};
 
 const now=new Date();
 const diffToMon=now.getDay()===0?-6:1-now.getDay();
@@ -717,7 +717,7 @@ const isCurrentWeek=weekOffset===0;
 const todayISO=todayStr();
 const td=new Date().toDateString();
 
-const todayN=bookings.filter(b=>{try{return new Date(b.at).toDateString()===td;}catch{return false;}}).length;
+const todayN=bookings.filter(b=>{try{return new Date(b.at).toDateString()===td;}catch(e){return false;}}).length;
 const recN=new Set(bookings.filter(b=>b.seriesId).map(b=>b.seriesId)).size;
 const weekAppBookings=bookings.filter(b=>b.date>=weekStartStr&&b.date<=weekEndStr);
 const weekAppRev=weekAppBookings.reduce((s,b)=>s+(Number(b.price)||0),0);
