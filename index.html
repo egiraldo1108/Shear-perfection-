@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -32,956 +33,959 @@
 var _useState=React.useState,_useEffect=React.useEffect,_useCallback=React.useCallback,_useMemo=React.useMemo;
 var useState=_useState,useEffect=_useEffect,useCallback=_useCallback,useMemo=_useMemo;
 
-firebase.initializeApp({apiKey:"AIzaSyBl8f_QtWgT2SdeSVVNbmmHvs5eAM8p-H8",authDomain:"shear-perfection-barbershop.firebaseapp.com",projectId:"shear-perfection-barbershop",storageBucket:"shear-perfection-barbershop.firebasestorage.app",messagingSenderId:"99950197287",appId:"1:99950197287:web:c2c43a0cb289e4563b2c02"});
+firebase.initializeApp({apiKey:“AIzaSyBl8f_QtWgT2SdeSVVNbmmHvs5eAM8p-H8”,authDomain:“shear-perfection-barbershop.firebaseapp.com”,projectId:“shear-perfection-barbershop”,storageBucket:“shear-perfection-barbershop.firebasestorage.app”,messagingSenderId:“99950197287”,appId:“1:99950197287:web:c2c43a0cb289e4563b2c02”});
 var db=firebase.firestore();
 
-var INTERVAL_DAYS={"Weekly":7,"Bi-Weekly":14,"Every 3 Weeks":21,"Every 4 Weeks":28};
-var GCAL_KEY="AIzaSyDgoo7yVT3AMYC4Ui54gR4q-yfn2axt4wk";
-var OWNER_PIN="1108";
+var INTERVAL_DAYS={“Weekly”:7,“Bi-Weekly”:14,“Every 3 Weeks”:21,“Every 4 Weeks”:28};
+var GCAL_KEY=“AIzaSyDgoo7yVT3AMYC4Ui54gR4q-yfn2axt4wk”;
+var OWNER_PIN=“1108”;
 var SERVICES=[
-  {name:"Men's / Young Men's Haircut",price:40,duration:30},
-  {name:"Men's Haircut w/ Beard",price:50,duration:30},
-  {name:"Men's Overgrown Service",price:50,duration:60},
-  {name:"Kid's Cut (Under 10)",price:35,duration:30},
-  {name:"Line Up",price:25,duration:15},
-  {name:"Line Up w/ Beard",price:30,duration:30},
-  {name:"Premium Beard",price:35,duration:30},
-  {name:"Bald Head",price:20,duration:15},
-  {name:"Bald Head w/ Beard",price:40,duration:30},
-  {name:"Men's Hair Dye Service",price:15,duration:15},
-  {name:"Hair Designs (Small)",price:20,duration:30}
+{name:“Men’s / Young Men’s Haircut”,price:40,duration:30},
+{name:“Men’s Haircut w/ Beard”,price:50,duration:30},
+{name:“Men’s Overgrown Service”,price:50,duration:60},
+{name:“Kid’s Cut (Under 10)”,price:35,duration:30},
+{name:“Line Up”,price:25,duration:15},
+{name:“Line Up w/ Beard”,price:30,duration:30},
+{name:“Premium Beard”,price:35,duration:30},
+{name:“Bald Head”,price:20,duration:15},
+{name:“Bald Head w/ Beard”,price:40,duration:30},
+{name:“Men’s Hair Dye Service”,price:15,duration:15},
+{name:“Hair Designs (Small)”,price:20,duration:30}
 ];
-var RECURRING=["One-time","Weekly","Bi-Weekly","Every 3 Weeks","Every 4 Weeks"];
-var DAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-var DAY_SHORT=["Su","Mo","Tu","We","Th","Fr","Sa"];
-var MONTH_NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
-var C={bg:"#0c0c0c",card:"#161616",border:"#222",red:"#8B0000",text:"#f0ebe3",muted:"#c8bfb4",dim:"#777",green:"#4caf50"};
+var RECURRING=[“One-time”,“Weekly”,“Bi-Weekly”,“Every 3 Weeks”,“Every 4 Weeks”];
+var DAY_NAMES=[“Sunday”,“Monday”,“Tuesday”,“Wednesday”,“Thursday”,“Friday”,“Saturday”];
+var DAY_SHORT=[“Su”,“Mo”,“Tu”,“We”,“Th”,“Fr”,“Sa”];
+var MONTH_NAMES=[“January”,“February”,“March”,“April”,“May”,“June”,“July”,“August”,“September”,“October”,“November”,“December”];
+var C={bg:”#0c0c0c”,card:”#161616”,border:”#222”,red:”#8B0000”,text:”#f0ebe3”,muted:”#c8bfb4”,dim:”#777”,green:”#4caf50”};
 var PERSONAL_BLOCKS=[
-  {dow:2,startH:12,startM:0,endH:13,endM:30},
-  {dow:3,startH:12,startM:30,endH:13,endM:30},
-  {dow:4,startH:12,startM:30,endH:13,endM:30}
+{dow:2,startH:11,startM:30,endH:12,endM:30},
+{dow:2,startH:12,startM:0,endH:13,endM:30},
+{dow:3,startH:12,startM:30,endH:13,endM:30},
+{dow:4,startH:10,startM:0,endH:11,endM:30},
+{dow:4,startH:12,startM:30,endH:13,endM:30}
 ];
 
 function mkDefaultDayHours(){var h={};for(var i=0;i<7;i++)h[i]={open:i!==0,start:9,end:19};return h;}
-var DEF={dayHours:mkDefaultDayHours(),calUrl:"",ntfyTopic:"",excludeBlocks:true};
+var DEF={dayHours:mkDefaultDayHours(),calUrl:””,ntfyTopic:””,excludeBlocks:true};
 
 function fbGetSettings(){
-  return db.collection("_config").doc("settings").get().then(function(d){
-    if(d.exists){var data=d.data();if(!data.dayHours)data.dayHours=mkDefaultDayHours();return Object.assign({},DEF,data);}
-    return DEF;
-  }).catch(function(e){return DEF;});
+return db.collection(”_config”).doc(“settings”).get().then(function(d){
+if(d.exists){var data=d.data();if(!data.dayHours)data.dayHours=mkDefaultDayHours();return Object.assign({},DEF,data);}
+return DEF;
+}).catch(function(e){return DEF;});
 }
-function fbSaveSettings(s){return db.collection("_config").doc("settings").set(s);}
+function fbSaveSettings(s){return db.collection(”_config”).doc(“settings”).set(s);}
 
 var _gcalCache={};
 function extractCalendarId(url){
-  if(!url)return null;
-  var m=url.match(/\/ical\/([^\/]+)\//);
-  if(m)return decodeURIComponent(m[1]);
-  if(url.includes("@"))return url.trim();
-  return null;
+if(!url)return null;
+var m=url.match(//ical/([^/]+)//);
+if(m)return decodeURIComponent(m[1]);
+if(url.includes(”@”))return url.trim();
+return null;
 }
 function fetchGCal(url){
-  if(!url)return Promise.resolve([]);
-  var calId=extractCalendarId(url);
-  if(!calId)return Promise.resolve(null);
-  var key=calId+"|"+new Date().toDateString();
-  if(_gcalCache[key])return Promise.resolve(_gcalCache[key]);
-  var now=new Date().toISOString();
-  var ep="https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(calId)+"/events?key="+GCAL_KEY+"&timeMin="+now+"&singleEvents=true&maxResults=500&orderBy=startTime";
-  return fetch(ep).then(function(r){
-    if(!r.ok){console.error("GCal",r.status);return null;}
-    return r.json();
-  }).then(function(data){
-    if(!data)return null;
-    var result=(data.items||[]).filter(function(e){return e.status!=="cancelled";}).map(function(e){
-      var rawS=e.start.dateTime||e.start.date+"T00:00:00";
-      var rawE=e.end.dateTime||e.end.date+"T23:59:59";
-      var sMs=new Date(rawS).getTime();
-      var eMs=Math.max(new Date(rawE).getTime(),sMs+15*60*1000);
-      return{title:e.summary||"",start:new Date(sMs).toISOString(),end:new Date(eMs).toISOString()};
-    });
-    _gcalCache[key]=result;
-    return result;
-  }).catch(function(e){console.error("GCal err",e);return null;});
+if(!url)return Promise.resolve([]);
+var calId=extractCalendarId(url);
+if(!calId)return Promise.resolve(null);
+var key=calId+”|”+new Date().toDateString();
+if(_gcalCache[key])return Promise.resolve(_gcalCache[key]);
+var now=new Date().toISOString();
+var ep=“https://www.googleapis.com/calendar/v3/calendars/”+encodeURIComponent(calId)+”/events?key=”+GCAL_KEY+”&timeMin=”+now+”&singleEvents=true&maxResults=500&orderBy=startTime”;
+return fetch(ep).then(function(r){
+if(!r.ok){console.error(“GCal”,r.status);return null;}
+return r.json();
+}).then(function(data){
+if(!data)return null;
+var result=(data.items||[]).filter(function(e){return e.status!==“cancelled”;}).map(function(e){
+var rawS=e.start.dateTime||e.start.date+“T00:00:00”;
+var rawE=e.end.dateTime||e.end.date+“T23:59:59”;
+var sMs=new Date(rawS).getTime();
+var eMs=Math.max(new Date(rawE).getTime(),sMs+15*60*1000);
+return{title:e.summary||””,start:new Date(sMs).toISOString(),end:new Date(eMs).toISOString()};
+});
+_gcalCache[key]=result;
+return result;
+}).catch(function(e){console.error(“GCal err”,e);return null;});
 }
 
 function sendNotif(topic,title,message){
-  if(!topic)return;
-  fetch("https://ntfy.sh/"+topic,{method:"POST",body:title+": "+message}).catch(function(e){console.error("Notif failed",e);});
+if(!topic)return;
+fetch(“https://ntfy.sh/”+topic,{method:“POST”,body:title+”: “+message}).catch(function(e){console.error(“Notif failed”,e);});
 }
 
 function uid(){return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);}
 
 function slotsForBooking(b){
-  var svc=SERVICES.find(function(s){return s.name===b.service;});
-  var dur=svc?svc.duration:30;
-  var parts=b.time.split(":");
-  var bh=parseInt(parts[0]);var bmi=parseInt(parts[1]);
-  var bStartMin=bh*60+bmi;
-  var slots=[];
-  for(var i=0;i<dur;i+=15){
-    var tot=bStartMin+i;
-    slots.push(b.date+"_"+String(Math.floor(tot/60)).padStart(2,"0")+":"+String(tot%60).padStart(2,"0"));
-  }
-  return slots;
+var svc=SERVICES.find(function(s){return s.name===b.service;});
+var dur=svc?svc.duration:30;
+var parts=b.time.split(”:”);
+var bh=parseInt(parts[0]);var bmi=parseInt(parts[1]);
+var bStartMin=bh*60+bmi;
+var slots=[];
+for(var i=0;i<dur;i+=15){
+var tot=bStartMin+i;
+slots.push(b.date+”_”+String(Math.floor(tot/60)).padStart(2,“0”)+”:”+String(tot%60).padStart(2,“0”));
+}
+return slots;
 }
 
 function fbSaveOne(b){
-  var slots=slotsForBooking(b);
-  var locksCol=db.collection("_locks");
-  var bookingsCol=db.collection("bookings");
-  return db.runTransaction(function(tx){
-    var lockRefs=slots.map(function(s){return locksCol.doc(s);});
-    return Promise.all(lockRefs.map(function(r){return tx.get(r);})).then(function(lockDocs){
-      if(lockDocs.some(function(d){return d.exists;}))throw new Error("SLOT_TAKEN");
-      var newRef=bookingsCol.doc();
-      tx.set(newRef,b);
-      lockRefs.forEach(function(r){tx.set(r,{date:b.date,bookedAt:b.at});});
-      return newRef;
-    });
-  }).catch(function(e){if(e.message==="SLOT_TAKEN")return null;throw e;});
+var slots=slotsForBooking(b);
+var locksCol=db.collection(”_locks”);
+var bookingsCol=db.collection(“bookings”);
+return db.runTransaction(function(tx){
+var lockRefs=slots.map(function(s){return locksCol.doc(s);});
+return Promise.all(lockRefs.map(function(r){return tx.get(r);})).then(function(lockDocs){
+if(lockDocs.some(function(d){return d.exists;}))throw new Error(“SLOT_TAKEN”);
+var newRef=bookingsCol.doc();
+tx.set(newRef,b);
+lockRefs.forEach(function(r){tx.set(r,{date:b.date,bookedAt:b.at});});
+return newRef;
+});
+}).catch(function(e){if(e.message===“SLOT_TAKEN”)return null;throw e;});
 }
 
 function fbSave(b){
-  var slots=slotsForBooking(b);
-  var locksCol=db.collection("_locks");
-  var bookingsCol=db.collection("bookings");
-  return db.runTransaction(function(tx){
-    var lockRefs=slots.map(function(s){return locksCol.doc(s);});
-    return Promise.all(lockRefs.map(function(r){return tx.get(r);})).then(function(lockDocs){
-      if(lockDocs.some(function(d){return d.exists;}))throw new Error("SLOT_TAKEN");
-      var newRef=bookingsCol.doc();
-      tx.set(newRef,b);
-      lockRefs.forEach(function(r){tx.set(r,{date:b.date,bookedAt:b.at});});
-      return newRef;
-    });
-  });
+var slots=slotsForBooking(b);
+var locksCol=db.collection(”_locks”);
+var bookingsCol=db.collection(“bookings”);
+return db.runTransaction(function(tx){
+var lockRefs=slots.map(function(s){return locksCol.doc(s);});
+return Promise.all(lockRefs.map(function(r){return tx.get(r);})).then(function(lockDocs){
+if(lockDocs.some(function(d){return d.exists;}))throw new Error(“SLOT_TAKEN”);
+var newRef=bookingsCol.doc();
+tx.set(newRef,b);
+lockRefs.forEach(function(r){tx.set(r,{date:b.date,bookedAt:b.at});});
+return newRef;
+});
+});
 }
 
 function fbSaveSeries(baseBooking){
-  var intervalDays=INTERVAL_DAYS[baseBooking.recurring];
-  if(!intervalDays)return fbSave(baseBooking);
-  var seriesId=uid();
-  var now=new Date();
-  var oneYearOut=new Date(now.getFullYear()+1,now.getMonth(),now.getDate());
-  var dates=[];
-  var cur=new Date(baseBooking.date+"T12:00:00");
-  while(cur<=oneYearOut){dates.push(cur.toISOString().split("T")[0]);cur=new Date(cur.getTime()+intervalDays*24*60*60*1000);}
-  var savedFirst=false;
-  var chain=Promise.resolve();
-  dates.forEach(function(date){
-    chain=chain.then(function(){
-      var b=Object.assign({},baseBooking,{date:date,seriesId:seriesId,seriesInterval:intervalDays,at:new Date().toISOString()});
-      return fbSaveOne(b).then(function(ref){if(ref&&!savedFirst)savedFirst=true;});
-    });
-  });
-  return chain.then(function(){if(!savedFirst)throw new Error("SLOT_TAKEN");return{seriesId:seriesId,total:dates.length};});
+var intervalDays=INTERVAL_DAYS[baseBooking.recurring];
+if(!intervalDays)return fbSave(baseBooking);
+var seriesId=uid();
+var now=new Date();
+var oneYearOut=new Date(now.getFullYear()+1,now.getMonth(),now.getDate());
+var dates=[];
+var cur=new Date(baseBooking.date+“T12:00:00”);
+while(cur<=oneYearOut){dates.push(cur.toISOString().split(“T”)[0]);cur=new Date(cur.getTime()+intervalDays*24*60*60*1000);}
+var savedFirst=false;
+var chain=Promise.resolve();
+dates.forEach(function(date){
+chain=chain.then(function(){
+var b=Object.assign({},baseBooking,{date:date,seriesId:seriesId,seriesInterval:intervalDays,at:new Date().toISOString()});
+return fbSaveOne(b).then(function(ref){if(ref&&!savedFirst)savedFirst=true;});
+});
+});
+return chain.then(function(){if(!savedFirst)throw new Error(“SLOT_TAKEN”);return{seriesId:seriesId,total:dates.length};});
 }
 
 function fbExtendSeries(seriesId,seriesInterval,baseBooking){
-  return db.collection("bookings").where("seriesId","==",seriesId).get().then(function(snap){
-    if(snap.empty)return;
-    var latest=snap.docs.map(function(d){return d.data().date;}).sort().pop();
-    var oneYearOut=new Date();oneYearOut.setFullYear(oneYearOut.getFullYear()+1);
-    var cur=new Date(latest+"T12:00:00");
-    cur=new Date(cur.getTime()+seriesInterval*24*60*60*1000);
-    var chain=Promise.resolve();
-    while(cur<=oneYearOut){
-      (function(date){
-        chain=chain.then(function(){
-          return fbSaveOne(Object.assign({},baseBooking,{date:date,seriesId:seriesId,seriesInterval:seriesInterval,at:new Date().toISOString()}));
-        });
-      })(cur.toISOString().split("T")[0]);
-      cur=new Date(cur.getTime()+seriesInterval*24*60*60*1000);
-    }
-    return chain;
-  });
+return db.collection(“bookings”).where(“seriesId”,”==”,seriesId).get().then(function(snap){
+if(snap.empty)return;
+var latest=snap.docs.map(function(d){return d.data().date;}).sort().pop();
+var oneYearOut=new Date();oneYearOut.setFullYear(oneYearOut.getFullYear()+1);
+var cur=new Date(latest+“T12:00:00”);
+cur=new Date(cur.getTime()+seriesInterval*24*60*60*1000);
+var chain=Promise.resolve();
+while(cur<=oneYearOut){
+(function(date){
+chain=chain.then(function(){
+return fbSaveOne(Object.assign({},baseBooking,{date:date,seriesId:seriesId,seriesInterval:seriesInterval,at:new Date().toISOString()}));
+});
+})(cur.toISOString().split(“T”)[0]);
+cur=new Date(cur.getTime()+seriesInterval*24*60*60*1000);
+}
+return chain;
+});
 }
 
 function fbDeleteOne(id){
-  return db.collection("bookings").doc(id).get().then(function(snap){
-    if(!snap.exists)return db.collection("bookings").doc(id).delete();
-    var b=snap.data();
-    var slots=slotsForBooking(b);
-    var batch=db.batch();
-    batch.delete(db.collection("bookings").doc(id));
-    slots.forEach(function(s){batch.delete(db.collection("_locks").doc(s));});
-    return batch.commit();
-  });
+return db.collection(“bookings”).doc(id).get().then(function(snap){
+if(!snap.exists)return db.collection(“bookings”).doc(id).delete();
+var b=snap.data();
+var slots=slotsForBooking(b);
+var batch=db.batch();
+batch.delete(db.collection(“bookings”).doc(id));
+slots.forEach(function(s){batch.delete(db.collection(”_locks”).doc(s));});
+return batch.commit();
+});
 }
 
 function fbDeleteSeries(seriesId){
-  return db.collection("bookings").where("seriesId","==",seriesId).get().then(function(snap){
-    var docs=snap.docs;
-    var chain=Promise.resolve();
-    for(var i=0;i<docs.length;i+=400){
-      (function(chunk){
-        chain=chain.then(function(){
-          var batch=db.batch();
-          chunk.forEach(function(doc){
-            var slots=slotsForBooking(doc.data());
-            batch.delete(db.collection("bookings").doc(doc.id));
-            slots.forEach(function(s){batch.delete(db.collection("_locks").doc(s));});
-          });
-          return batch.commit();
-        });
-      })(docs.slice(i,i+400));
-    }
-    return chain;
-  });
+return db.collection(“bookings”).where(“seriesId”,”==”,seriesId).get().then(function(snap){
+var docs=snap.docs;
+var chain=Promise.resolve();
+for(var i=0;i<docs.length;i+=400){
+(function(chunk){
+chain=chain.then(function(){
+var batch=db.batch();
+chunk.forEach(function(doc){
+var slots=slotsForBooking(doc.data());
+batch.delete(db.collection(“bookings”).doc(doc.id));
+slots.forEach(function(s){batch.delete(db.collection(”_locks”).doc(s));});
+});
+return batch.commit();
+});
+})(docs.slice(i,i+400));
+}
+return chain;
+});
 }
 
 function fbListen(cb){
-  return db.collection("bookings").orderBy("at","desc").onSnapshot(
-    function(s){cb(s.docs.map(function(d){return Object.assign({},d.data(),{_id:d.id});}));},
-    function(e){console.error(e);}
-  );
+return db.collection(“bookings”).orderBy(“at”,“desc”).onSnapshot(
+function(s){cb(s.docs.map(function(d){return Object.assign({},d.data(),{_id:d.id});}));},
+function(e){console.error(e);}
+);
 }
 
-function todayStr(){return new Date().toISOString().split("T")[0];}
+function todayStr(){return new Date().toISOString().split(“T”)[0];}
 function fmt12(t){
-  if(!t)return"";
-  var parts=t.split(":");
-  var h=parseInt(parts[0]);var m=parseInt(parts[1]);
-  return(h%12||12)+":"+String(m).padStart(2,"0")+" "+(h>=12?"PM":"AM");
+if(!t)return””;
+var parts=t.split(”:”);
+var h=parseInt(parts[0]);var m=parseInt(parts[1]);
+return(h%12||12)+”:”+String(m).padStart(2,“0”)+” “+(h>=12?“PM”:“AM”);
 }
 
 function genSlots(ds,serviceDur,calEvents,appBookings,cfg){
-  var parts=ds.split("-");var y=parseInt(parts[0]);var mo=parseInt(parts[1]);var d=parseInt(parts[2]);
-  var dow=new Date(y,mo-1,d).getDay();
-  var dh=(cfg.dayHours||{})[dow];
-  if(!dh||!dh.open)return[];
-  var startMin=dh.start*60;var endMin=dh.end*60;var now=new Date();var slots=[];
-  for(var off=0;off<=endMin-startMin-serviceDur;off+=15){
-    var slotS=startMin+off;var slotE=slotS+serviceDur;
-    var dtS=new Date(y,mo-1,d,Math.floor(slotS/60),slotS%60);
-    var dtE=new Date(y,mo-1,d,Math.floor(slotE/60),slotE%60);
-    if(dtS<=now)continue;
-    var calBlock=(calEvents||[]).some(function(ev){var evS=new Date(ev.start);var evE=new Date(ev.end);return dtS<evE&&dtE>evS;});
-    if(calBlock)continue;
-    var appBlock=(appBookings||[]).some(function(b){
-      if(!b.date||!b.time)return false;
-      var bp=b.date.split("-");var by=parseInt(bp[0]);var bmo=parseInt(bp[1]);var bd=parseInt(bp[2]);
-      if(by!==y||bmo!==mo||bd!==d)return false;
-      var tp=b.time.split(":");var bh=parseInt(tp[0]);var bmi=parseInt(tp[1]);
-      var bSvc=SERVICES.find(function(s){return s.name===b.service;});
-      var bDur=bSvc?bSvc.duration:30;
-      var bS=new Date(y,mo-1,d,bh,bmi);var bE=new Date(bS.getTime()+bDur*60*1000);
-      return dtS<bE&&dtE>bS;
-    });
-    if(appBlock)continue;
-    slots.push(String(Math.floor(slotS/60)).padStart(2,"0")+":"+String(slotS%60).padStart(2,"0"));
-  }
-  return slots;
+var parts=ds.split(”-”);var y=parseInt(parts[0]);var mo=parseInt(parts[1]);var d=parseInt(parts[2]);
+var dow=new Date(y,mo-1,d).getDay();
+var dh=(cfg.dayHours||{})[dow];
+if(!dh||!dh.open)return[];
+var startMin=dh.start*60;var endMin=dh.end*60;var now=new Date();var slots=[];
+for(var off=0;off<=endMin-startMin-serviceDur;off+=15){
+var slotS=startMin+off;var slotE=slotS+serviceDur;
+var dtS=new Date(y,mo-1,d,Math.floor(slotS/60),slotS%60);
+var dtE=new Date(y,mo-1,d,Math.floor(slotE/60),slotE%60);
+if(dtS<=now)continue;
+var calBlock=(calEvents||[]).some(function(ev){var evS=new Date(ev.start);var evE=new Date(ev.end);return dtS<evE&&dtE>evS;});
+if(calBlock)continue;
+var appBlock=(appBookings||[]).some(function(b){
+if(!b.date||!b.time)return false;
+var bp=b.date.split(”-”);var by=parseInt(bp[0]);var bmo=parseInt(bp[1]);var bd=parseInt(bp[2]);
+if(by!==y||bmo!==mo||bd!==d)return false;
+var tp=b.time.split(”:”);var bh=parseInt(tp[0]);var bmi=parseInt(tp[1]);
+var bSvc=SERVICES.find(function(s){return s.name===b.service;});
+var bDur=bSvc?bSvc.duration:30;
+var bS=new Date(y,mo-1,d,bh,bmi);var bE=new Date(bS.getTime()+bDur*60*1000);
+return dtS<bE&&dtE>bS;
+});
+if(appBlock)continue;
+slots.push(String(Math.floor(slotS/60)).padStart(2,“0”)+”:”+String(slotS%60).padStart(2,“0”));
+}
+return slots;
 }
 
 function makeICS(b){
-  var sv=SERVICES.find(function(s){return s.name===b.service;});var dur=sv?sv.duration:30;
-  var dp=b.date.split("-");var y=parseInt(dp[0]);var mo=parseInt(dp[1]);var d=parseInt(dp[2]);
-  var tp=b.time.split(":");var h=parseInt(tp[0]);var mi=parseInt(tp[1]);
-  function p(n){return String(n).padStart(2,"0");}
-  var st=y+""+p(mo)+p(d)+"T"+p(h)+p(mi)+"00";
-  var eD=new Date(y,mo-1,d,h,mi+dur);
-  var en=eD.getFullYear()+""+p(eD.getMonth()+1)+p(eD.getDate())+"T"+p(eD.getHours())+p(eD.getMinutes())+"00";
-  return["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//ShearPerfection//EN","BEGIN:VEVENT","UID:"+Date.now()+"@sp","DTSTART:"+st,"DTEND:"+en,"SUMMARY:Appointment at Shear Perfection","DESCRIPTION:Service: "+b.service+"\\nNotes: "+(b.notes||"None"),"LOCATION:Shear Perfection Barbershop","END:VEVENT","END:VCALENDAR"].join("\r\n");
+var sv=SERVICES.find(function(s){return s.name===b.service;});var dur=sv?sv.duration:30;
+var dp=b.date.split(”-”);var y=parseInt(dp[0]);var mo=parseInt(dp[1]);var d=parseInt(dp[2]);
+var tp=b.time.split(”:”);var h=parseInt(tp[0]);var mi=parseInt(tp[1]);
+function p(n){return String(n).padStart(2,“0”);}
+var st=y+””+p(mo)+p(d)+“T”+p(h)+p(mi)+“00”;
+var eD=new Date(y,mo-1,d,h,mi+dur);
+var en=eD.getFullYear()+””+p(eD.getMonth()+1)+p(eD.getDate())+“T”+p(eD.getHours())+p(eD.getMinutes())+“00”;
+return[“BEGIN:VCALENDAR”,“VERSION:2.0”,“PRODID:-//ShearPerfection//EN”,“BEGIN:VEVENT”,“UID:”+Date.now()+”@sp”,“DTSTART:”+st,“DTEND:”+en,“SUMMARY:Appointment at Shear Perfection”,“DESCRIPTION:Service: “+b.service+”\nNotes: “+(b.notes||“None”),“LOCATION:Shear Perfection Barbershop”,“END:VEVENT”,“END:VCALENDAR”].join(”\r\n”);
 }
-function dlICS(b){var blob=new Blob([makeICS(b)],{type:"text/calendar"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="appointment.ics";a.click();URL.revokeObjectURL(url);}
+function dlICS(b){var blob=new Blob([makeICS(b)],{type:“text/calendar”});var url=URL.createObjectURL(blob);var a=document.createElement(“a”);a.href=url;a.download=“appointment.ics”;a.click();URL.revokeObjectURL(url);}
 function gCalLink(b){
-  var sv=SERVICES.find(function(s){return s.name===b.service;});var dur=sv?sv.duration:30;
-  var dp=b.date.split("-");var y=parseInt(dp[0]);var mo=parseInt(dp[1]);var d=parseInt(dp[2]);
-  var tp=b.time.split(":");var h=parseInt(tp[0]);var mi=parseInt(tp[1]);
-  function p(n){return String(n).padStart(2,"0");}
-  var start=y+""+p(mo)+p(d)+"T"+p(h)+p(mi)+"00";
-  var eD=new Date(y,mo-1,d,h,mi+dur);
-  var end=eD.getFullYear()+""+p(eD.getMonth()+1)+p(eD.getDate())+"T"+p(eD.getHours())+p(eD.getMinutes())+"00";
-  return"https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent("Appointment at Shear Perfection")+"&dates="+start+"/"+end+"&details="+encodeURIComponent("Service: "+b.service+(b.notes?"\nNotes: "+b.notes:""))+"&location="+encodeURIComponent("Shear Perfection Barbershop");
+var sv=SERVICES.find(function(s){return s.name===b.service;});var dur=sv?sv.duration:30;
+var dp=b.date.split(”-”);var y=parseInt(dp[0]);var mo=parseInt(dp[1]);var d=parseInt(dp[2]);
+var tp=b.time.split(”:”);var h=parseInt(tp[0]);var mi=parseInt(tp[1]);
+function p(n){return String(n).padStart(2,“0”);}
+var start=y+””+p(mo)+p(d)+“T”+p(h)+p(mi)+“00”;
+var eD=new Date(y,mo-1,d,h,mi+dur);
+var end=eD.getFullYear()+””+p(eD.getMonth()+1)+p(eD.getDate())+“T”+p(eD.getHours())+p(eD.getMinutes())+“00”;
+return”https://calendar.google.com/calendar/render?action=TEMPLATE&text=”+encodeURIComponent(“Appointment at Shear Perfection”)+”&dates=”+start+”/”+end+”&details=”+encodeURIComponent(“Service: “+b.service+(b.notes?”\nNotes: “+b.notes:””))+”&location=”+encodeURIComponent(“Shear Perfection Barbershop”);
 }
 
 function useLS(key,def){
-  var pair=useState(function(){try{var x=localStorage.getItem(key);return x?JSON.parse(x):def;}catch(e){return def;}});
-  var v=pair[0];var setV=pair[1];
-  var set=useCallback(function(fn){
-    setV(function(p){
-      var n=typeof fn==="function"?fn(p):fn;
-      try{localStorage.setItem(key,JSON.stringify(n));}catch(e){}
-      return n;
-    });
-  },[key]);
-  return[v,set];
+var pair=useState(function(){try{var x=localStorage.getItem(key);return x?JSON.parse(x):def;}catch(e){return def;}});
+var v=pair[0];var setV=pair[1];
+var set=useCallback(function(fn){
+setV(function(p){
+var n=typeof fn===“function”?fn(p):fn;
+try{localStorage.setItem(key,JSON.stringify(n));}catch(e){}
+return n;
+});
+},[key]);
+return[v,set];
 }
 
 function Lbl(props){
-  return React.createElement("div",{style:{marginBottom:6}},
-    React.createElement("div",{style:{fontSize:11,color:props.err?"#ff6b6b":C.red,letterSpacing:2,textTransform:"uppercase",fontWeight:700}},props.text+(props.err?" — "+props.err:"")),
-    props.sub&&React.createElement("div",{style:{fontSize:12,color:C.dim,marginTop:2}},props.sub)
-  );
+return React.createElement(“div”,{style:{marginBottom:6}},
+React.createElement(“div”,{style:{fontSize:11,color:props.err?”#ff6b6b”:C.red,letterSpacing:2,textTransform:“uppercase”,fontWeight:700}},props.text+(props.err?” — “+props.err:””)),
+props.sub&&React.createElement(“div”,{style:{fontSize:12,color:C.dim,marginTop:2}},props.sub)
+);
 }
-function IS(x){return Object.assign({width:"100%",background:"#1a1a1a",border:"1px solid "+C.border,color:"#f0ebe3",padding:"13px 14px",fontSize:16,outline:"none",fontFamily:"inherit",borderRadius:0,WebkitAppearance:"none"},x||{});}
-function Btn(props){return React.createElement("button",{onClick:props.onClick,disabled:props.disabled,style:Object.assign({fontFamily:"inherit",cursor:props.disabled?"default":"pointer",touchAction:"manipulation",border:"none",fontWeight:700},props.style||{})},props.children);}
-function Dots(){return React.createElement("div",{style:{display:"flex",gap:6,justifyContent:"center"}},React.createElement("span",{className:"dot"}),React.createElement("span",{className:"dot"}),React.createElement("span",{className:"dot"}));}
+function IS(x){return Object.assign({width:“100%”,background:”#1a1a1a”,border:“1px solid “+C.border,color:”#f0ebe3”,padding:“13px 14px”,fontSize:16,outline:“none”,fontFamily:“inherit”,borderRadius:0,WebkitAppearance:“none”},x||{});}
+function Btn(props){return React.createElement(“button”,{onClick:props.onClick,disabled:props.disabled,style:Object.assign({fontFamily:“inherit”,cursor:props.disabled?“default”:“pointer”,touchAction:“manipulation”,border:“none”,fontWeight:700},props.style||{})},props.children);}
+function Dots(){return React.createElement(“div”,{style:{display:“flex”,gap:6,justifyContent:“center”}},React.createElement(“span”,{className:“dot”}),React.createElement(“span”,{className:“dot”}),React.createElement(“span”,{className:“dot”}));}
 
 function PinScreen(props){
-  var ps=useState("");var pin=ps[0];var setPin=ps[1];
-  var es=useState(false);var err=es[0];var setErr=es[1];
-  function tap(digit){
-    if(pin.length>=4)return;
-    var next=pin+digit;
-    setPin(next);
-    if(next.length===4){
-      if(next===OWNER_PIN)props.onSuccess();
-      else{setErr(true);setTimeout(function(){setPin("");setErr(false);},700);}
-    }
-  }
-  function del(){setPin(function(p){return p.slice(0,-1);});}
-  return React.createElement("div",{style:{height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:C.bg,padding:32,gap:24}},
-    React.createElement("div",{style:{textAlign:"center"}},
-      React.createElement("div",{style:{fontSize:32,marginBottom:8}},"🔒"),
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:22,letterSpacing:3,color:C.text}},"OWNER ACCESS"),
-      React.createElement("div",{style:{fontSize:12,color:C.dim,marginTop:4}},"Enter your PIN")
-    ),
-    React.createElement("div",{style:{display:"flex",gap:16,marginBottom:8}},
-      [0,1,2,3].map(function(i){return React.createElement("div",{key:i,style:{width:14,height:14,borderRadius:"50%",background:i<pin.length?(err?"#ff4444":C.red):"#222",border:"2px solid "+(i<pin.length?(err?"#ff4444":C.red):"#333"),transition:"all 0.15s"}});})
-    ),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,width:"100%",maxWidth:280}},
-      [1,2,3,4,5,6,7,8,9].map(function(n){return React.createElement(Btn,{key:n,onClick:function(){tap(String(n));},style:{padding:"18px",background:"#1a1a1a",color:"#fff",fontSize:22,fontFamily:"'Bebas Neue',cursive",letterSpacing:2,border:"1px solid "+C.border}},n);}),
-      React.createElement(Btn,{onClick:props.onCancel,style:{padding:"18px",background:"none",color:"#aaa",fontSize:13,border:"1px solid "+C.border,fontFamily:"inherit"}},"Cancel"),
-      React.createElement(Btn,{onClick:function(){tap("0");},style:{padding:"18px",background:"#1a1a1a",color:"#fff",fontSize:22,fontFamily:"'Bebas Neue',cursive",letterSpacing:2,border:"1px solid "+C.border}},"0"),
-      React.createElement(Btn,{onClick:del,style:{padding:"18px",background:"none",color:"#ccc",fontSize:20,border:"1px solid "+C.border,fontFamily:"inherit"}},"⌫")
-    )
-  );
+var ps=useState(””);var pin=ps[0];var setPin=ps[1];
+var es=useState(false);var err=es[0];var setErr=es[1];
+function tap(digit){
+if(pin.length>=4)return;
+var next=pin+digit;
+setPin(next);
+if(next.length===4){
+if(next===OWNER_PIN)props.onSuccess();
+else{setErr(true);setTimeout(function(){setPin(””);setErr(false);},700);}
+}
+}
+function del(){setPin(function(p){return p.slice(0,-1);});}
+return React.createElement(“div”,{style:{height:“100%”,display:“flex”,flexDirection:“column”,alignItems:“center”,justifyContent:“center”,background:C.bg,padding:32,gap:24}},
+React.createElement(“div”,{style:{textAlign:“center”}},
+React.createElement(“div”,{style:{fontSize:32,marginBottom:8}},“🔒”),
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:22,letterSpacing:3,color:C.text}},“OWNER ACCESS”),
+React.createElement(“div”,{style:{fontSize:12,color:C.dim,marginTop:4}},“Enter your PIN”)
+),
+React.createElement(“div”,{style:{display:“flex”,gap:16,marginBottom:8}},
+[0,1,2,3].map(function(i){return React.createElement(“div”,{key:i,style:{width:14,height:14,borderRadius:“50%”,background:i<pin.length?(err?”#ff4444”:C.red):”#222”,border:“2px solid “+(i<pin.length?(err?”#ff4444”:C.red):”#333”),transition:“all 0.15s”}});})
+),
+React.createElement(“div”,{style:{display:“grid”,gridTemplateColumns:“repeat(3,1fr)”,gap:12,width:“100%”,maxWidth:280}},
+[1,2,3,4,5,6,7,8,9].map(function(n){return React.createElement(Btn,{key:n,onClick:function(){tap(String(n));},style:{padding:“18px”,background:”#1a1a1a”,color:”#fff”,fontSize:22,fontFamily:”‘Bebas Neue’,cursive”,letterSpacing:2,border:“1px solid “+C.border}},n);}),
+React.createElement(Btn,{onClick:props.onCancel,style:{padding:“18px”,background:“none”,color:”#aaa”,fontSize:13,border:“1px solid “+C.border,fontFamily:“inherit”}},“Cancel”),
+React.createElement(Btn,{onClick:function(){tap(“0”);},style:{padding:“18px”,background:”#1a1a1a”,color:”#fff”,fontSize:22,fontFamily:”‘Bebas Neue’,cursive”,letterSpacing:2,border:“1px solid “+C.border}},“0”),
+React.createElement(Btn,{onClick:del,style:{padding:“18px”,background:“none”,color:”#ccc”,fontSize:20,border:“1px solid “+C.border,fontFamily:“inherit”}},“⌫”)
+)
+);
 }
 
 function CalendarView(props){
-  var bookings=props.bookings;var settings=props.settings;
-  var now=new Date();
-  var vys=useState(now.getFullYear());var viewYear=vys[0];var setViewYear=vys[1];
-  var vms=useState(now.getMonth());var viewMonth=vms[0];var setViewMonth=vms[1];
-  var sds=useState(null);var selectedDate=sds[0];var setSelectedDate=sds[1];
-  var ges=useState([]);var gcalEvents=ges[0];var setGcalEvents=ges[1];
-  var gls=useState(false);var gcalLoading=gls[0];var setGcalLoading=gls[1];
-  var today=todayStr();
-  useEffect(function(){
-    if(!settings.calUrl)return;
-    setGcalLoading(true);
-    fetchGCal(settings.calUrl).then(function(evs){setGcalEvents(evs||[]);setGcalLoading(false);});
-  },[settings.calUrl,viewMonth,viewYear]);
-  var byDate=useMemo(function(){
-    var m={};
-    bookings.forEach(function(b){if(b.date){if(!m[b.date])m[b.date]=[];m[b.date].push(b);}});
-    return m;
-  },[bookings]);
-  var gcalByDate=useMemo(function(){
-    var m={};
-    gcalEvents.forEach(function(ev){var ds=ev.start.split("T")[0];if(!m[ds])m[ds]=[];m[ds].push(ev);});
-    return m;
-  },[gcalEvents]);
-  var firstDow=new Date(viewYear,viewMonth,1).getDay();
-  var daysInMonth=new Date(viewYear,viewMonth+1,0).getDate();
-  var cells=useMemo(function(){
-    var c=[];
-    for(var i=0;i<firstDow;i++)c.push(null);
-    for(var d=1;d<=daysInMonth;d++)c.push(d);
-    return c;
-  },[viewYear,viewMonth]);
-  function prevM(){if(viewMonth===0){setViewYear(function(y){return y-1;});setViewMonth(11);}else setViewMonth(function(m){return m-1;});setSelectedDate(null);}
-  function nextM(){if(viewMonth===11){setViewYear(function(y){return y+1;});setViewMonth(0);}else setViewMonth(function(m){return m+1;});setSelectedDate(null);}
-  var selBookings=selectedDate?(byDate[selectedDate]||[]).sort(function(a,b){return a.time.localeCompare(b.time);}):[];
-  var selGcal=selectedDate?(gcalByDate[selectedDate]||[]).sort(function(a,b){return a.start.localeCompare(b.start);}):[];
-  var selTotal=selBookings.length+selGcal.length;
-  function fmtGT(iso){if(!iso||!iso.includes("T"))return"All day";var d=new Date(iso);var h=d.getHours();var m=d.getMinutes();return(h%12||12)+":"+String(m).padStart(2,"0")+" "+(h>=12?"PM":"AM");}
-  return React.createElement("div",{style:{height:"100%",overflowY:"auto",background:C.bg,padding:16}},
-    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
-      React.createElement("div",null,
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:24,letterSpacing:3,color:C.text}},"BOOKING ",React.createElement("span",{style:{color:C.red}},"CALENDAR")),
-        React.createElement("div",{style:{fontSize:10,color:C.dim,marginTop:2}},gcalLoading?"syncing...":gcalEvents.length>0?"● GCal synced":settings.calUrl?"● No upcoming GCal events":"Add GCal URL in ⚙️")
-      ),
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-        React.createElement(Btn,{onClick:prevM,style:{background:"#1a1a1a",color:"#ccc",border:"1px solid "+C.border,padding:"7px 14px",fontSize:18}},"‹"),
-        React.createElement("div",{style:{fontSize:12,fontWeight:700,color:C.text,minWidth:120,textAlign:"center"}},MONTH_NAMES[viewMonth].slice(0,3)+" "+viewYear),
-        React.createElement(Btn,{onClick:nextM,style:{background:"#1a1a1a",color:"#ccc",border:"1px solid "+C.border,padding:"7px 14px",fontSize:18}},"›")
-      )
-    ),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:2}},
-      DAY_SHORT.map(function(d){return React.createElement("div",{key:d,style:{textAlign:"center",fontSize:10,color:C.dim,padding:"4px 0",letterSpacing:1,fontWeight:700}},d);})
-    ),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:20}},
-      cells.map(function(day,idx){
-        if(!day)return React.createElement("div",{key:"e"+idx,style:{minHeight:56}});
-        var ds=viewYear+"-"+String(viewMonth+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
-        var bks=byDate[ds]||[];var gks=gcalByDate[ds]||[];var hasAny=bks.length||gks.length;
-        var isToday=ds===today;var isSel=ds===selectedDate;var isPast=ds<today;
-        return React.createElement("div",{key:day,onClick:function(){setSelectedDate(isSel?null:ds);},style:{background:isSel?C.red:hasAny?"#0f0f0f":C.card,border:"1px solid "+(isToday?C.red:isSel?C.red:C.border),padding:"4px 3px",minHeight:56,cursor:"pointer",opacity:isPast&&!hasAny?0.3:1}},
-          React.createElement("div",{style:{fontSize:12,color:isToday?C.red:isSel?"#fff":isPast?"#555":"#ccc",fontWeight:isToday?700:400,marginBottom:2,textAlign:"center"}},day),
-          bks.slice(0,1).map(function(b,bi){return React.createElement("div",{key:bi,style:{fontSize:9,background:isSel?"rgba(255,255,255,0.3)":"#8B0000",color:"#fff",padding:"2px 3px",marginBottom:1,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",lineHeight:1.3}},fmt12(b.time));}),
-          gks.slice(0,1).map(function(ev,ei){return React.createElement("div",{key:ei,style:{fontSize:9,background:isSel?"rgba(255,255,255,0.2)":"#1a3a5a",color:"#7ab8ff",padding:"2px 3px",marginBottom:1,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",lineHeight:1.3}},fmtGT(ev.start));}),
-          (bks.length+gks.length)>2&&React.createElement("div",{style:{fontSize:9,color:"#666",paddingLeft:2}},"+"+String(bks.length+gks.length-2))
-        );
-      })
-    ),
-    selectedDate&&React.createElement("div",null,
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}},
-        React.createElement("div",{style:{fontSize:11,color:C.red,letterSpacing:2,fontWeight:700,textTransform:"uppercase"}},new Date(selectedDate+"T12:00:00").toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})),
-        selTotal>0&&React.createElement("div",{style:{background:C.red,color:"#fff",fontSize:11,fontWeight:700,padding:"2px 8px"}},selTotal+" event"+(selTotal!==1?"s":""))
-      ),
-      selTotal===0?React.createElement("div",{style:{padding:"20px",textAlign:"center",border:"1px dashed "+C.border,color:"#555",fontSize:13}},"Nothing scheduled this day"):
-      React.createElement("div",null,
-        selBookings.map(function(b){
-          var sv=SERVICES.find(function(s){return s.name===b.service;});
-          return React.createElement("div",{key:b._id,style:{background:C.card,border:"1px solid #2a1a1a",padding:"13px 14px",marginBottom:8,display:"flex",gap:10}},
-            React.createElement("div",{style:{width:3,background:C.red,flexShrink:0,alignSelf:"stretch"}}),
-            React.createElement("div",{style:{flex:1}},
-              React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}},
-                React.createElement("div",null,React.createElement("div",{style:{fontWeight:700,fontSize:15,color:"#f0ebe3"}},b.name),React.createElement("div",{style:{fontSize:12,color:"#888",marginTop:1}},b.phone)),
-                React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:20,color:C.red}},"$"+b.price)
-              ),
-              React.createElement("div",{style:{fontSize:12,color:"#bbb",marginTop:5}},"🕐 "+fmt12(b.time)+(sv?" · ⏱ "+sv.duration+" min":"")),
-              React.createElement("div",{style:{fontSize:12,color:"#888",marginTop:2}},b.service),
-              b.recurring&&b.recurring!=="One-time"&&React.createElement("div",{style:{fontSize:11,color:C.green,marginTop:4}},"🔁 "+b.recurring),
-              b.notes&&React.createElement("div",{style:{marginTop:5,padding:"4px 10px",background:"#111",fontSize:12,color:"#777",fontStyle:"italic"}},"✂️ "+b.notes)
-            )
-          );
-        }),
-        selGcal.map(function(ev,i){return React.createElement("div",{key:i,style:{background:"#0a1520",border:"1px solid #1a3a5a",padding:"13px 14px",marginBottom:8,display:"flex",gap:10}},
-          React.createElement("div",{style:{width:3,background:"#2a6aaa",flexShrink:0,alignSelf:"stretch"}}),
-          React.createElement("div",{style:{flex:1}},
-            React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}},
-              React.createElement("div",{style:{fontWeight:700,fontSize:14,color:"#a0c8f0"}},ev.title||"Google Calendar Event"),
-              React.createElement("div",{style:{fontSize:10,background:"#1a3a5a",color:"#7ab8ff",padding:"2px 7px",flexShrink:0,fontWeight:700,letterSpacing:1}},"GCAL")
-            ),
-            React.createElement("div",{style:{fontSize:12,color:"#6a9abf",marginTop:5}},!ev.start.includes("T")?"📅 All day":"🕐 "+fmtGT(ev.start)+" → "+fmtGT(ev.end))
-          )
-        );})
-      )
-    ),
-    !selectedDate&&React.createElement("div",{style:{display:"flex",gap:14,marginTop:4,flexWrap:"wrap"}},
-      [{c:C.red,l:"Today"},{c:"#8B0000",l:"App booking"},{c:"#1a3a5a",l:"Google Cal"},{c:C.card,l:"Open"}].map(function(item){
-        return React.createElement("div",{key:item.l,style:{display:"flex",alignItems:"center",gap:5}},
-          React.createElement("div",{style:{width:10,height:10,background:item.c,border:"1px solid #333"}}),
-          React.createElement("span",{style:{fontSize:11,color:C.dim}},item.l)
-        );
-      })
-    )
-  );
+var bookings=props.bookings;var settings=props.settings;
+var now=new Date();
+var vys=useState(now.getFullYear());var viewYear=vys[0];var setViewYear=vys[1];
+var vms=useState(now.getMonth());var viewMonth=vms[0];var setViewMonth=vms[1];
+var sds=useState(null);var selectedDate=sds[0];var setSelectedDate=sds[1];
+var ges=useState([]);var gcalEvents=ges[0];var setGcalEvents=ges[1];
+var gls=useState(false);var gcalLoading=gls[0];var setGcalLoading=gls[1];
+var today=todayStr();
+useEffect(function(){
+if(!settings.calUrl)return;
+setGcalLoading(true);
+fetchGCal(settings.calUrl).then(function(evs){setGcalEvents(evs||[]);setGcalLoading(false);});
+},[settings.calUrl,viewMonth,viewYear]);
+var byDate=useMemo(function(){
+var m={};
+bookings.forEach(function(b){if(b.date){if(!m[b.date])m[b.date]=[];m[b.date].push(b);}});
+return m;
+},[bookings]);
+var gcalByDate=useMemo(function(){
+var m={};
+gcalEvents.forEach(function(ev){var ds=ev.start.split(“T”)[0];if(!m[ds])m[ds]=[];m[ds].push(ev);});
+return m;
+},[gcalEvents]);
+var firstDow=new Date(viewYear,viewMonth,1).getDay();
+var daysInMonth=new Date(viewYear,viewMonth+1,0).getDate();
+var cells=useMemo(function(){
+var c=[];
+for(var i=0;i<firstDow;i++)c.push(null);
+for(var d=1;d<=daysInMonth;d++)c.push(d);
+return c;
+},[viewYear,viewMonth]);
+function prevM(){if(viewMonth===0){setViewYear(function(y){return y-1;});setViewMonth(11);}else setViewMonth(function(m){return m-1;});setSelectedDate(null);}
+function nextM(){if(viewMonth===11){setViewYear(function(y){return y+1;});setViewMonth(0);}else setViewMonth(function(m){return m+1;});setSelectedDate(null);}
+var selBookings=selectedDate?(byDate[selectedDate]||[]).sort(function(a,b){return a.time.localeCompare(b.time);}):[];
+var selGcal=selectedDate?(gcalByDate[selectedDate]||[]).sort(function(a,b){return a.start.localeCompare(b.start);}):[];
+var selTotal=selBookings.length+selGcal.length;
+function fmtGT(iso){if(!iso||!iso.includes(“T”))return”All day”;var d=new Date(iso);var h=d.getHours();var m=d.getMinutes();return(h%12||12)+”:”+String(m).padStart(2,“0”)+” “+(h>=12?“PM”:“AM”);}
+return React.createElement(“div”,{style:{height:“100%”,overflowY:“auto”,background:C.bg,padding:16}},
+React.createElement(“div”,{style:{display:“flex”,alignItems:“center”,justifyContent:“space-between”,marginBottom:12}},
+React.createElement(“div”,null,
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:24,letterSpacing:3,color:C.text}},“BOOKING “,React.createElement(“span”,{style:{color:C.red}},“CALENDAR”)),
+React.createElement(“div”,{style:{fontSize:10,color:C.dim,marginTop:2}},gcalLoading?“syncing…”:gcalEvents.length>0?“● GCal synced”:settings.calUrl?“● No upcoming GCal events”:“Add GCal URL in ⚙️”)
+),
+React.createElement(“div”,{style:{display:“flex”,alignItems:“center”,gap:8}},
+React.createElement(Btn,{onClick:prevM,style:{background:”#1a1a1a”,color:”#ccc”,border:“1px solid “+C.border,padding:“7px 14px”,fontSize:18}},”‹”),
+React.createElement(“div”,{style:{fontSize:12,fontWeight:700,color:C.text,minWidth:120,textAlign:“center”}},MONTH_NAMES[viewMonth].slice(0,3)+” “+viewYear),
+React.createElement(Btn,{onClick:nextM,style:{background:”#1a1a1a”,color:”#ccc”,border:“1px solid “+C.border,padding:“7px 14px”,fontSize:18}},”›”)
+)
+),
+React.createElement(“div”,{style:{display:“grid”,gridTemplateColumns:“repeat(7,1fr)”,gap:2,marginBottom:2}},
+DAY_SHORT.map(function(d){return React.createElement(“div”,{key:d,style:{textAlign:“center”,fontSize:10,color:C.dim,padding:“4px 0”,letterSpacing:1,fontWeight:700}},d);})
+),
+React.createElement(“div”,{style:{display:“grid”,gridTemplateColumns:“repeat(7,1fr)”,gap:2,marginBottom:20}},
+cells.map(function(day,idx){
+if(!day)return React.createElement(“div”,{key:“e”+idx,style:{minHeight:56}});
+var ds=viewYear+”-”+String(viewMonth+1).padStart(2,“0”)+”-”+String(day).padStart(2,“0”);
+var bks=byDate[ds]||[];var gks=gcalByDate[ds]||[];var hasAny=bks.length||gks.length;
+var isToday=ds===today;var isSel=ds===selectedDate;var isPast=ds<today;
+return React.createElement(“div”,{key:day,onClick:function(){setSelectedDate(isSel?null:ds);},style:{background:isSel?C.red:hasAny?”#0f0f0f”:C.card,border:“1px solid “+(isToday?C.red:isSel?C.red:C.border),padding:“4px 3px”,minHeight:56,cursor:“pointer”,opacity:isPast&&!hasAny?0.3:1}},
+React.createElement(“div”,{style:{fontSize:12,color:isToday?C.red:isSel?”#fff”:isPast?”#555”:”#ccc”,fontWeight:isToday?700:400,marginBottom:2,textAlign:“center”}},day),
+bks.slice(0,1).map(function(b,bi){return React.createElement(“div”,{key:bi,style:{fontSize:9,background:isSel?“rgba(255,255,255,0.3)”:”#8B0000”,color:”#fff”,padding:“2px 3px”,marginBottom:1,overflow:“hidden”,whiteSpace:“nowrap”,textOverflow:“ellipsis”,lineHeight:1.3}},fmt12(b.time));}),
+gks.slice(0,1).map(function(ev,ei){return React.createElement(“div”,{key:ei,style:{fontSize:9,background:isSel?“rgba(255,255,255,0.2)”:”#1a3a5a”,color:”#7ab8ff”,padding:“2px 3px”,marginBottom:1,overflow:“hidden”,whiteSpace:“nowrap”,textOverflow:“ellipsis”,lineHeight:1.3}},fmtGT(ev.start));}),
+(bks.length+gks.length)>2&&React.createElement(“div”,{style:{fontSize:9,color:”#666”,paddingLeft:2}},”+”+String(bks.length+gks.length-2))
+);
+})
+),
+selectedDate&&React.createElement(“div”,null,
+React.createElement(“div”,{style:{display:“flex”,alignItems:“center”,gap:10,marginBottom:12,flexWrap:“wrap”}},
+React.createElement(“div”,{style:{fontSize:11,color:C.red,letterSpacing:2,fontWeight:700,textTransform:“uppercase”}},new Date(selectedDate+“T12:00:00”).toLocaleDateString(“en-US”,{weekday:“long”,month:“long”,day:“numeric”})),
+selTotal>0&&React.createElement(“div”,{style:{background:C.red,color:”#fff”,fontSize:11,fontWeight:700,padding:“2px 8px”}},selTotal+” event”+(selTotal!==1?“s”:””))
+),
+selTotal===0?React.createElement(“div”,{style:{padding:“20px”,textAlign:“center”,border:“1px dashed “+C.border,color:”#555”,fontSize:13}},“Nothing scheduled this day”):
+React.createElement(“div”,null,
+selBookings.map(function(b){
+var sv=SERVICES.find(function(s){return s.name===b.service;});
+return React.createElement(“div”,{key:b._id,style:{background:C.card,border:“1px solid #2a1a1a”,padding:“13px 14px”,marginBottom:8,display:“flex”,gap:10}},
+React.createElement(“div”,{style:{width:3,background:C.red,flexShrink:0,alignSelf:“stretch”}}),
+React.createElement(“div”,{style:{flex:1}},
+React.createElement(“div”,{style:{display:“flex”,justifyContent:“space-between”,alignItems:“flex-start”}},
+React.createElement(“div”,null,React.createElement(“div”,{style:{fontWeight:700,fontSize:15,color:”#f0ebe3”}},b.name),React.createElement(“div”,{style:{fontSize:12,color:”#888”,marginTop:1}},b.phone)),
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:20,color:C.red}},”$”+b.price)
+),
+React.createElement(“div”,{style:{fontSize:12,color:”#bbb”,marginTop:5}},“🕐 “+fmt12(b.time)+(sv?” · ⏱ “+sv.duration+” min”:””)),
+React.createElement(“div”,{style:{fontSize:12,color:”#888”,marginTop:2}},b.service),
+b.recurring&&b.recurring!==“One-time”&&React.createElement(“div”,{style:{fontSize:11,color:C.green,marginTop:4}},“🔁 “+b.recurring),
+b.notes&&React.createElement(“div”,{style:{marginTop:5,padding:“4px 10px”,background:”#111”,fontSize:12,color:”#777”,fontStyle:“italic”}},“✂️ “+b.notes)
+)
+);
+}),
+selGcal.map(function(ev,i){return React.createElement(“div”,{key:i,style:{background:”#0a1520”,border:“1px solid #1a3a5a”,padding:“13px 14px”,marginBottom:8,display:“flex”,gap:10}},
+React.createElement(“div”,{style:{width:3,background:”#2a6aaa”,flexShrink:0,alignSelf:“stretch”}}),
+React.createElement(“div”,{style:{flex:1}},
+React.createElement(“div”,{style:{display:“flex”,justifyContent:“space-between”,alignItems:“flex-start”,gap:8}},
+React.createElement(“div”,{style:{fontWeight:700,fontSize:14,color:”#a0c8f0”}},ev.title||“Google Calendar Event”),
+React.createElement(“div”,{style:{fontSize:10,background:”#1a3a5a”,color:”#7ab8ff”,padding:“2px 7px”,flexShrink:0,fontWeight:700,letterSpacing:1}},“GCAL”)
+),
+React.createElement(“div”,{style:{fontSize:12,color:”#6a9abf”,marginTop:5}},!ev.start.includes(“T”)?“📅 All day”:“🕐 “+fmtGT(ev.start)+” → “+fmtGT(ev.end))
+)
+);})
+)
+),
+!selectedDate&&React.createElement(“div”,{style:{display:“flex”,gap:14,marginTop:4,flexWrap:“wrap”}},
+[{c:C.red,l:“Today”},{c:”#8B0000”,l:“App booking”},{c:”#1a3a5a”,l:“Google Cal”},{c:C.card,l:“Open”}].map(function(item){
+return React.createElement(“div”,{key:item.l,style:{display:“flex”,alignItems:“center”,gap:5}},
+React.createElement(“div”,{style:{width:10,height:10,background:item.c,border:“1px solid #333”}}),
+React.createElement(“span”,{style:{fontSize:11,color:C.dim}},item.l)
+);
+})
+)
+);
 }
 
 function Settings(props){
-  var settings=props.settings;
-  function initHours(){var def=mkDefaultDayHours();var saved=settings.dayHours||{};var merged={};for(var i=0;i<7;i++)merged[i]=Object.assign({},def[i],saved[i]||{});return merged;}
-  var cs=useState(settings.calUrl||"");var calUrl=cs[0];var setCalUrl=cs[1];
-  var ds=useState(initHours);var dayHours=ds[0];var setDayHours=ds[1];
-  var ns=useState(settings.ntfyTopic||"");var ntfyTopic=ns[0];var setNtfyTopic=ns[1];
-  var ebs=useState(settings.excludeBlocks!==false);var excludeBlocks=ebs[0];var setExcludeBlocks=ebs[1];
-  var cts=useState(false);var ct=cts[0];var setCt=cts[1];
-  var cms=useState(null);var cm=cms[0];var setCm=cms[1];
-  var sms=useState(false);var smsSent=sms[0];var setSmsSent=sms[1];
-  var nls=useState("");var notifLog=nls[0];var setNotifLog=nls[1];
-  function toggleDay(i){setDayHours(function(h){var n=Object.assign({},h);n[i]=Object.assign({},n[i],{open:!n[i].open});return n;});}
-  function setHour(i,key,val){setDayHours(function(h){var n=Object.assign({},h);n[i]=Object.assign({},n[i]);n[i][key]=Number(val);return n;});}
-  function testCal(){
-    setCt(true);setCm(null);
-    var calId=extractCalendarId(calUrl);
-    if(!calId){setCm({ok:false,msg:"Couldn't read that URL."});setCt(false);return;}
-    fetchGCal(calUrl).then(function(r){
-      if(r===null)setCm({ok:false,msg:"Couldn't connect. Make sure calendar is set to Public."});
-      else setCm({ok:true,msg:"✅ Connected! Found "+r.length+" upcoming event"+(r.length!==1?"s":"")+". Busy times blocked automatically."});
-      setCt(false);
-    });
-  }
-  function testNotif(){
-    if(!ntfyTopic){alert("Enter your ntfy topic first.");return;}
-    setNotifLog("Sending...");
-    fetch("https://ntfy.sh/"+ntfyTopic,{method:"POST",body:"💈 Shear Perfection: Notifications working! You're all set Esteban."})
-      .then(function(r){
-        if(r.ok){setNotifLog("✅ Sent! Status "+r.status+" — check ntfy app");setSmsSent(true);setTimeout(function(){setSmsSent(false);},3000);}
-        else{return r.text().then(function(txt){setNotifLog("❌ Failed: HTTP "+r.status+" — "+txt.slice(0,100));});}
-      }).catch(function(e){setNotifLog("❌ Error: "+e.message);});
-  }
-  function save(){props.onSave({calUrl:calUrl,dayHours:dayHours,ntfyTopic:ntfyTopic,excludeBlocks:excludeBlocks});props.onBack();}
-  var hours=[];for(var i=5;i<23;i++)hours.push(i);
-  return React.createElement("div",{style:{height:"100%",overflowY:"auto",background:C.bg,padding:"20px 20px 60px"}},
-    React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:22,letterSpacing:3,color:C.text,marginBottom:4}},"ESTEBAN'S ",React.createElement("span",{style:{color:C.red}},"SETTINGS")),
-    React.createElement("div",{style:{fontSize:12,color:C.dim,marginBottom:24}},"Push notifications · Google Calendar · Schedule"),
-    React.createElement("div",{style:{marginBottom:28}},
-      React.createElement(Lbl,{text:"Push Notifications (ntfy.sh)",sub:"Free instant push to your phone on every booking"}),
-      React.createElement("div",{style:{background:"#111",border:"1px solid "+C.border,padding:"14px 16px",marginBottom:12}},
-        React.createElement("div",{style:{fontSize:11,color:C.red,fontWeight:700,letterSpacing:2,marginBottom:10}},"SETUP (FREE · 2 MINS)"),
-        ["1. Search 'ntfy' in the App Store → install","2. Open ntfy → tap + → enter topic: shear-perfection-esteban","3. Tap Subscribe","4. Type that topic in the field below","5. Save Settings → tap Test Notification"].map(function(s){return React.createElement("div",{key:s,style:{fontSize:12,color:C.muted,paddingBottom:5,lineHeight:1.5}},s);})
-      ),
-      React.createElement("div",{style:{marginBottom:12}},
-        React.createElement("div",{style:{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}},"YOUR NTFY TOPIC"),
-        React.createElement("input",{style:IS(),value:ntfyTopic,onChange:function(e){setNtfyTopic(e.target.value);},placeholder:"shear-perfection-esteban",autoCapitalize:"none",autoCorrect:"off",spellCheck:false})
-      ),
-      ntfyTopic&&React.createElement(Btn,{onClick:testNotif,style:{width:"100%",padding:"13px",background:smsSent?"#0d1a00":"#0d1a0d",color:"#6fcf6f",border:"1px solid "+C.green,fontSize:14,fontFamily:"inherit"}},smsSent?"✅ Sent! Check your phone":"🔔 Test Notification"),
-      notifLog&&React.createElement("div",{style:{marginTop:8,padding:"10px 14px",background:"#0a0a0a",border:"1px solid #333",fontSize:11,color:"#aaa",fontFamily:"monospace",wordBreak:"break-all"}},notifLog),
-      React.createElement("div",{style:{marginTop:10,padding:"10px 14px",background:"#0a180a",border:"1px solid #2a4a2a",fontSize:12,color:"#88cc88",lineHeight:1.8}},
-        React.createElement("div",{style:{fontWeight:700,marginBottom:4,color:"#aaeaaa"}},"What gets sent:"),
-        React.createElement("div",null,"📲 Instant push on every new booking"),
-        React.createElement("div",null,"💰 100% free")
-      )
-    ),
-    React.createElement("div",{style:{marginBottom:28}},
-      React.createElement(Lbl,{text:"Google Calendar URL",sub:"Blocks your existing events from client view"}),
-      React.createElement("div",{style:{background:"#111",border:"1px solid "+C.border,padding:"14px 16px",marginBottom:12}},
-        React.createElement("div",{style:{fontSize:11,color:C.red,fontWeight:700,letterSpacing:2,marginBottom:10}},"HOW TO GET YOUR LINK"),
-        ["1. Open Google Calendar","2. Tap ··· next to your calendar → Settings","3. Turn on 'Make available to public'","4. Scroll to 'Integrate calendar'","5. Copy 'Public address in iCal format'","6. Paste below"].map(function(s){return React.createElement("div",{key:s,style:{fontSize:13,color:C.muted,paddingBottom:6}},s);})
-      ),
-      React.createElement("input",{style:IS({marginBottom:10}),value:calUrl,onChange:function(e){setCalUrl(e.target.value);},placeholder:"https://calendar.google.com/calendar/ical/...",autoCapitalize:"none",autoCorrect:"off",spellCheck:false}),
-      calUrl&&React.createElement(Btn,{onClick:testCal,disabled:ct,style:{width:"100%",padding:"13px",background:ct?"#111":"#1a3a1a",color:"#6fcf6f",border:"1px solid "+C.green,fontSize:14,fontFamily:"inherit"}},ct?"Testing...":"Test Calendar Connection"),
-      cm&&React.createElement("div",{style:{marginTop:10,padding:"12px 14px",background:cm.ok?"#0d1a00":"#1a0000",border:"1px solid "+(cm.ok?C.green:C.red),fontSize:13,color:cm.ok?"#6fcf6f":"#ff6b6b",lineHeight:1.6}},cm.msg)
-    ),
-    React.createElement("div",{style:{marginBottom:28}},
-      React.createElement(Lbl,{text:"Personal Calendar Blocks",sub:"Exclude Tue 12-1:30, Wed/Thu 12:30-1:30 from revenue"}),
-      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:C.card,border:"1px solid "+C.border,padding:"14px"}},
-        React.createElement("div",{style:{fontSize:13,color:"#f0ebe3"}},"Exclude personal blocks from revenue"),
-        React.createElement(Btn,{onClick:function(){setExcludeBlocks(function(v){return !v;});},style:{padding:"6px 18px",background:excludeBlocks?C.red:"#1a1a1a",color:excludeBlocks?"#fff":"#888",border:"1px solid "+(excludeBlocks?C.red:C.border),fontSize:12,fontFamily:"inherit"}},excludeBlocks?"ON":"OFF")
-      )
-    ),
-    React.createElement("div",{style:{marginBottom:8}},
-      React.createElement("div",{style:{fontSize:11,color:C.red,letterSpacing:2,textTransform:"uppercase",fontWeight:700,marginBottom:4}},"Weekly Schedule"),
-      React.createElement("div",{style:{fontSize:12,color:C.dim,marginBottom:14}},"Toggle each day on/off and set your hours")
-    ),
-    React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10,marginBottom:32}},
-      DAY_NAMES.map(function(name,i){
-        var dh=dayHours[i]||{open:false,start:9,end:19};
-        return React.createElement("div",{key:i,style:{background:C.card,border:"1px solid "+(dh.open?C.red:C.border),padding:"12px 14px"}},
-          React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:dh.open?10:0}},
-            React.createElement("div",{style:{fontSize:14,fontWeight:700,color:dh.open?"#fff":"#666"}},name),
-            React.createElement(Btn,{onClick:function(){toggleDay(i);},style:{padding:"6px 16px",fontSize:12,fontFamily:"inherit",background:dh.open?C.red:"#1a1a1a",color:dh.open?"#fff":"#888",border:"1px solid "+(dh.open?C.red:C.border)}},dh.open?"OPEN":"CLOSED")
-          ),
-          dh.open&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
-            React.createElement("div",null,
-              React.createElement("div",{style:{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}},"START"),
-              React.createElement("select",{style:IS({padding:"8px 10px",fontSize:14,cursor:"pointer"}),value:dh.start,onChange:function(e){setHour(i,"start",e.target.value);}},
-                hours.map(function(h){return React.createElement("option",{key:h,value:h},fmt12(String(h).padStart(2,"0")+":00"));})
-              )
-            ),
-            React.createElement("div",null,
-              React.createElement("div",{style:{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}},"END"),
-              React.createElement("select",{style:IS({padding:"8px 10px",fontSize:14,cursor:"pointer"}),value:dh.end,onChange:function(e){setHour(i,"end",e.target.value);}},
-                hours.map(function(h){return React.createElement("option",{key:h,value:h},fmt12(String(h).padStart(2,"0")+":00"));})
-              )
-            )
-          )
-        );
-      })
-    ),
-    React.createElement("div",{style:{display:"flex",gap:10}},
-      React.createElement(Btn,{onClick:props.onBack,style:{flex:1,padding:"14px",background:"#1a1a1a",color:"#ccc",border:"1px solid "+C.border,fontSize:14}},"← Back"),
-      React.createElement(Btn,{onClick:save,style:{flex:2,padding:"14px",background:C.red,color:"#fff",fontFamily:"'Bebas Neue',cursive",fontSize:20,letterSpacing:2}},"SAVE SETTINGS")
-    )
-  );
+var settings=props.settings;
+function initHours(){var def=mkDefaultDayHours();var saved=settings.dayHours||{};var merged={};for(var i=0;i<7;i++)merged[i]=Object.assign({},def[i],saved[i]||{});return merged;}
+var cs=useState(settings.calUrl||””);var calUrl=cs[0];var setCalUrl=cs[1];
+var ds=useState(initHours);var dayHours=ds[0];var setDayHours=ds[1];
+var ns=useState(settings.ntfyTopic||””);var ntfyTopic=ns[0];var setNtfyTopic=ns[1];
+var ebs=useState(settings.excludeBlocks!==false);var excludeBlocks=ebs[0];var setExcludeBlocks=ebs[1];
+var cts=useState(false);var ct=cts[0];var setCt=cts[1];
+var cms=useState(null);var cm=cms[0];var setCm=cms[1];
+var sms=useState(false);var smsSent=sms[0];var setSmsSent=sms[1];
+var nls=useState(””);var notifLog=nls[0];var setNotifLog=nls[1];
+function toggleDay(i){setDayHours(function(h){var n=Object.assign({},h);n[i]=Object.assign({},n[i],{open:!n[i].open});return n;});}
+function setHour(i,key,val){setDayHours(function(h){var n=Object.assign({},h);n[i]=Object.assign({},n[i]);n[i][key]=Number(val);return n;});}
+function testCal(){
+setCt(true);setCm(null);
+var calId=extractCalendarId(calUrl);
+if(!calId){setCm({ok:false,msg:“Couldn’t read that URL.”});setCt(false);return;}
+fetchGCal(calUrl).then(function(r){
+if(r===null)setCm({ok:false,msg:“Couldn’t connect. Make sure calendar is set to Public.”});
+else setCm({ok:true,msg:“✅ Connected! Found “+r.length+” upcoming event”+(r.length!==1?“s”:””)+”. Busy times blocked automatically.”});
+setCt(false);
+});
+}
+function testNotif(){
+if(!ntfyTopic){alert(“Enter your ntfy topic first.”);return;}
+setNotifLog(“Sending…”);
+fetch(“https://ntfy.sh/”+ntfyTopic,{method:“POST”,body:“💈 Shear Perfection: Notifications working! You’re all set Esteban.”})
+.then(function(r){
+if(r.ok){setNotifLog(“✅ Sent! Status “+r.status+” — check ntfy app”);setSmsSent(true);setTimeout(function(){setSmsSent(false);},3000);}
+else{return r.text().then(function(txt){setNotifLog(“❌ Failed: HTTP “+r.status+” — “+txt.slice(0,100));});}
+}).catch(function(e){setNotifLog(“❌ Error: “+e.message);});
+}
+function save(){props.onSave({calUrl:calUrl,dayHours:dayHours,ntfyTopic:ntfyTopic,excludeBlocks:excludeBlocks});props.onBack();}
+var hours=[];for(var i=5;i<23;i++)hours.push(i);
+return React.createElement(“div”,{style:{height:“100%”,overflowY:“auto”,background:C.bg,padding:“20px 20px 60px”}},
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:22,letterSpacing:3,color:C.text,marginBottom:4}},“ESTEBAN’S “,React.createElement(“span”,{style:{color:C.red}},“SETTINGS”)),
+React.createElement(“div”,{style:{fontSize:12,color:C.dim,marginBottom:24}},“Push notifications · Google Calendar · Schedule”),
+React.createElement(“div”,{style:{marginBottom:28}},
+React.createElement(Lbl,{text:“Push Notifications (ntfy.sh)”,sub:“Free instant push to your phone on every booking”}),
+React.createElement(“div”,{style:{background:”#111”,border:“1px solid “+C.border,padding:“14px 16px”,marginBottom:12}},
+React.createElement(“div”,{style:{fontSize:11,color:C.red,fontWeight:700,letterSpacing:2,marginBottom:10}},“SETUP (FREE · 2 MINS)”),
+[“1. Search ‘ntfy’ in the App Store → install”,“2. Open ntfy → tap + → enter topic: shear-perfection-esteban”,“3. Tap Subscribe”,“4. Type that topic in the field below”,“5. Save Settings → tap Test Notification”].map(function(s){return React.createElement(“div”,{key:s,style:{fontSize:12,color:C.muted,paddingBottom:5,lineHeight:1.5}},s);})
+),
+React.createElement(“div”,{style:{marginBottom:12}},
+React.createElement(“div”,{style:{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}},“YOUR NTFY TOPIC”),
+React.createElement(“input”,{style:IS(),value:ntfyTopic,onChange:function(e){setNtfyTopic(e.target.value);},placeholder:“shear-perfection-esteban”,autoCapitalize:“none”,autoCorrect:“off”,spellCheck:false})
+),
+ntfyTopic&&React.createElement(Btn,{onClick:testNotif,style:{width:“100%”,padding:“13px”,background:smsSent?”#0d1a00”:”#0d1a0d”,color:”#6fcf6f”,border:“1px solid “+C.green,fontSize:14,fontFamily:“inherit”}},smsSent?“✅ Sent! Check your phone”:“🔔 Test Notification”),
+notifLog&&React.createElement(“div”,{style:{marginTop:8,padding:“10px 14px”,background:”#0a0a0a”,border:“1px solid #333”,fontSize:11,color:”#aaa”,fontFamily:“monospace”,wordBreak:“break-all”}},notifLog),
+React.createElement(“div”,{style:{marginTop:10,padding:“10px 14px”,background:”#0a180a”,border:“1px solid #2a4a2a”,fontSize:12,color:”#88cc88”,lineHeight:1.8}},
+React.createElement(“div”,{style:{fontWeight:700,marginBottom:4,color:”#aaeaaa”}},“What gets sent:”),
+React.createElement(“div”,null,“📲 Instant push on every new booking”),
+React.createElement(“div”,null,“💰 100% free”)
+)
+),
+React.createElement(“div”,{style:{marginBottom:28}},
+React.createElement(Lbl,{text:“Google Calendar URL”,sub:“Blocks your existing events from client view”}),
+React.createElement(“div”,{style:{background:”#111”,border:“1px solid “+C.border,padding:“14px 16px”,marginBottom:12}},
+React.createElement(“div”,{style:{fontSize:11,color:C.red,fontWeight:700,letterSpacing:2,marginBottom:10}},“HOW TO GET YOUR LINK”),
+[“1. Open Google Calendar”,“2. Tap ··· next to your calendar → Settings”,“3. Turn on ‘Make available to public’”,“4. Scroll to ‘Integrate calendar’”,“5. Copy ‘Public address in iCal format’”,“6. Paste below”].map(function(s){return React.createElement(“div”,{key:s,style:{fontSize:13,color:C.muted,paddingBottom:6}},s);})
+),
+React.createElement(“input”,{style:IS({marginBottom:10}),value:calUrl,onChange:function(e){setCalUrl(e.target.value);},placeholder:“https://calendar.google.com/calendar/ical/…”,autoCapitalize:“none”,autoCorrect:“off”,spellCheck:false}),
+calUrl&&React.createElement(Btn,{onClick:testCal,disabled:ct,style:{width:“100%”,padding:“13px”,background:ct?”#111”:”#1a3a1a”,color:”#6fcf6f”,border:“1px solid “+C.green,fontSize:14,fontFamily:“inherit”}},ct?“Testing…”:“Test Calendar Connection”),
+cm&&React.createElement(“div”,{style:{marginTop:10,padding:“12px 14px”,background:cm.ok?”#0d1a00”:”#1a0000”,border:“1px solid “+(cm.ok?C.green:C.red),fontSize:13,color:cm.ok?”#6fcf6f”:”#ff6b6b”,lineHeight:1.6}},cm.msg)
+),
+React.createElement(“div”,{style:{marginBottom:28}},
+React.createElement(Lbl,{text:“Personal Calendar Blocks”,sub:“Exclude Tue 12-1:30, Wed 11:30-1:30, Thu 10-11:30 & 12:30-1:30”}),
+React.createElement(“div”,{style:{display:“flex”,alignItems:“center”,justifyContent:“space-between”,background:C.card,border:“1px solid “+C.border,padding:“14px”}},
+React.createElement(“div”,{style:{fontSize:13,color:”#f0ebe3”}},“Exclude personal blocks from revenue”),
+React.createElement(Btn,{onClick:function(){setExcludeBlocks(function(v){return !v;});},style:{padding:“6px 18px”,background:excludeBlocks?C.red:”#1a1a1a”,color:excludeBlocks?”#fff”:”#888”,border:“1px solid “+(excludeBlocks?C.red:C.border),fontSize:12,fontFamily:“inherit”}},excludeBlocks?“ON”:“OFF”)
+)
+),
+React.createElement(“div”,{style:{marginBottom:8}},
+React.createElement(“div”,{style:{fontSize:11,color:C.red,letterSpacing:2,textTransform:“uppercase”,fontWeight:700,marginBottom:4}},“Weekly Schedule”),
+React.createElement(“div”,{style:{fontSize:12,color:C.dim,marginBottom:14}},“Toggle each day on/off and set your hours”)
+),
+React.createElement(“div”,{style:{display:“flex”,flexDirection:“column”,gap:10,marginBottom:32}},
+DAY_NAMES.map(function(name,i){
+var dh=dayHours[i]||{open:false,start:9,end:19};
+return React.createElement(“div”,{key:i,style:{background:C.card,border:“1px solid “+(dh.open?C.red:C.border),padding:“12px 14px”}},
+React.createElement(“div”,{style:{display:“flex”,alignItems:“center”,justifyContent:“space-between”,marginBottom:dh.open?10:0}},
+React.createElement(“div”,{style:{fontSize:14,fontWeight:700,color:dh.open?”#fff”:”#666”}},name),
+React.createElement(Btn,{onClick:function(){toggleDay(i);},style:{padding:“6px 16px”,fontSize:12,fontFamily:“inherit”,background:dh.open?C.red:”#1a1a1a”,color:dh.open?”#fff”:”#888”,border:“1px solid “+(dh.open?C.red:C.border)}},dh.open?“OPEN”:“CLOSED”)
+),
+dh.open&&React.createElement(“div”,{style:{display:“grid”,gridTemplateColumns:“1fr 1fr”,gap:10}},
+React.createElement(“div”,null,
+React.createElement(“div”,{style:{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}},“START”),
+React.createElement(“select”,{style:IS({padding:“8px 10px”,fontSize:14,cursor:“pointer”}),value:dh.start,onChange:function(e){setHour(i,“start”,e.target.value);}},
+hours.map(function(h){return React.createElement(“option”,{key:h,value:h},fmt12(String(h).padStart(2,“0”)+”:00”));})
+)
+),
+React.createElement(“div”,null,
+React.createElement(“div”,{style:{fontSize:10,color:C.dim,letterSpacing:1,marginBottom:4}},“END”),
+React.createElement(“select”,{style:IS({padding:“8px 10px”,fontSize:14,cursor:“pointer”}),value:dh.end,onChange:function(e){setHour(i,“end”,e.target.value);}},
+hours.map(function(h){return React.createElement(“option”,{key:h,value:h},fmt12(String(h).padStart(2,“0”)+”:00”));})
+)
+)
+)
+);
+})
+),
+React.createElement(“div”,{style:{display:“flex”,gap:10}},
+React.createElement(Btn,{onClick:props.onBack,style:{flex:1,padding:“14px”,background:”#1a1a1a”,color:”#ccc”,border:“1px solid “+C.border,fontSize:14}},“← Back”),
+React.createElement(Btn,{onClick:save,style:{flex:2,padding:“14px”,background:C.red,color:”#fff”,fontFamily:”‘Bebas Neue’,cursive”,fontSize:20,letterSpacing:2}},“SAVE SETTINGS”)
+)
+);
 }
 
 function BookForm(props){
-  var allBookings=props.allBookings;var settings=props.settings;
-  var ss=useState(0);var step=ss[0];var setStep=ss[1];
-  var svs=useState(null);var svc=svs[0];var setSvc=svs[1];
-  var dts=useState("");var date=dts[0];var setDate=dts[1];
-  var tms=useState("");var time=tms[0];var setTime=tms[1];
-  var fms=useState({name:"",phone:"",notes:"",recurring:"One-time"});var form=fms[0];var setForm=fms[1];
-  var ers=useState({});var errors=ers[0];var setErrors=ers[1];
-  var sls=useState([]);var slots=sls[0];var setSlots=sls[1];
-  var lds=useState(false);var loading=lds[0];var setLoading=lds[1];
-  var cws=useState(false);var calWarn=cws[0];var setCalWarn=cws[1];
-  var nas=useState(null);var nextAvail=nas[0];var setNextAvail=nas[1];
-  var sns=useState(false);var searchingNext=sns[0];var setSearchingNext=sns[1];
-  var svgs=useState(false);var saving=svgs[0];var setSaving=svgs[1];
-  var lss=useState(null);var last=lss[0];var setLast=lss[1];
-  function setF(k,v){setForm(function(f){var n=Object.assign({},f);n[k]=v;return n;});}
-  var svcName=svc?svc.name:null;
-  useEffect(function(){
-    if(!date||!svcName)return;
-    setSlots([]);setTime("");setLoading(true);setCalWarn(false);
-    var sv=SERVICES.find(function(s){return s.name===svcName;});
-    if(!sv)return;
-    var dur=sv.duration;
-    if(settings.calUrl){
-      fetchGCal(settings.calUrl).then(function(r){
-        var ce=r||[];if(r===null)setCalWarn(true);
-        setSlots(genSlots(date,dur,ce,allBookings,settings));
-        setLoading(false);
-      });
-    } else {
-      setSlots(genSlots(date,dur,[],allBookings,settings));
-      setLoading(false);
-    }
-  },[date,svcName]);
-  useEffect(function(){
-    if(!svcName)return;
-    setNextAvail(null);setSearchingNext(true);
-    var sv=SERVICES.find(function(s){return s.name===svcName;});
-    if(!sv){setSearchingNext(false);return;}
-    var dur=sv.duration;
-    var today=new Date();
-    function checkDays(ce,d){
-      if(d>=14){setSearchingNext(false);return;}
-      var dt=new Date(today);dt.setDate(today.getDate()+d);
-      var ds=dt.toISOString().split("T")[0];
-      var s=genSlots(ds,dur,ce,allBookings,settings);
-      if(s.length>0){setNextAvail({date:ds,time:s[0]});setSearchingNext(false);}
-      else checkDays(ce,d+1);
-    }
-    if(settings.calUrl){
-      fetchGCal(settings.calUrl).then(function(r){checkDays(r&&r.length?r:[],0);});
-    } else {checkDays([],0);}
-  },[svcName]);
-  function validate(){var e={};if(!form.name.trim())e.name="Required";if(!form.phone.trim())e.phone="Required";setErrors(e);return!Object.keys(e).length;}
-  function submit(){
-    if(!validate())return;setSaving(true);
-    var b=Object.assign({},form,{service:svc.name,price:svc.price,date:date,time:time,at:new Date().toISOString()});
-    var isRecurring=form.recurring&&form.recurring!=="One-time";
-    var p=isRecurring?fbSaveSeries(b):fbSave(b);
-    p.then(function(){
-      setLast(b);
-      if(settings.ntfyTopic){
-        var dispDate=new Date(date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
-        sendNotif(settings.ntfyTopic,"💈 New Booking!",b.name+" · "+svc.name+"\n"+dispDate+" at "+fmt12(time)+(isRecurring?" ("+form.recurring+")":"")+"\n"+b.phone);
-      }
-      setSaving(false);setStep(3);
-    }).catch(function(e){
-      setSaving(false);
-      if(e.message==="SLOT_TAKEN"){alert("⚠️ That slot was just taken! Please pick a different time.");setTime("");setStep(1);}
-      else alert("Couldn't save — check connection.");
-    });
-  }
-  function reset(){setSvc(null);setDate("");setTime("");setForm({name:"",phone:"",notes:"",recurring:"One-time"});setStep(0);}
-  if(step===0)return React.createElement("div",{style:{height:"100%",overflowY:"auto",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",padding:24,gap:20}},
-    React.createElement("div",{style:{textAlign:"center",paddingTop:8}},
-      React.createElement("div",{style:{fontSize:46,marginBottom:10}},"💈"),
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:26,letterSpacing:3,color:C.text,marginBottom:4}},"SHEAR PERFECTION"),
-      React.createElement("div",{style:{fontSize:12,color:C.red,letterSpacing:2}},"BOOK WITH ESTEBAN • 24/7")
-    ),
-    React.createElement("div",{style:{width:"100%",maxWidth:420,background:"#111",border:"1px solid #1e1e1e"}},
-      React.createElement("div",{style:{padding:"10px 16px",background:C.red,fontFamily:"'Bebas Neue',cursive",fontSize:14,letterSpacing:2}},"TAP A SERVICE TO BOOK"),
-      SERVICES.map(function(s){
-        return React.createElement("div",{key:s.name,onClick:function(){setSvc(s);setStep(1);},style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 16px",borderBottom:"1px solid #1a1a1a",cursor:"pointer",touchAction:"manipulation"}},
-          React.createElement("div",null,
-            React.createElement("div",{style:{color:"#f0ebe3",fontSize:14,fontWeight:600}},s.name),
-            React.createElement("div",{style:{color:"#888",fontSize:11,marginTop:2}},"⏱ "+s.duration+" min")
-          ),
-          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
-            React.createElement("span",{style:{color:"#fff",fontWeight:700,fontSize:15}},"$"+s.price),
-            React.createElement("span",{style:{color:C.red,fontSize:18}},"›")
-          )
-        );
-      })
-    )
-  );
-  if(step===1)return React.createElement("div",{style:{height:"100%",overflowY:"auto",background:C.bg,padding:"20px 20px 40px"}},
-    React.createElement("div",{style:{background:C.red,padding:"14px 16px",marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center"}},
-      React.createElement("div",null,
-        React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.7)",letterSpacing:1}},"SELECTED"),
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:18,color:"#fff"}},svc.name),
-        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.8)",marginTop:2}},"⏱ "+svc.duration+" min")
-      ),
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:28,color:"#fff"}},"$"+svc.price)
-    ),
-    (searchingNext||nextAvail)&&React.createElement("div",{style:{marginBottom:16,background:"#0a1a0a",border:"1px solid #2a4a2a",padding:"12px 14px"}},
-      searchingNext?React.createElement("div",{style:{fontSize:12,color:"#4a8a4a"}},"🔍 Finding next available slot..."):
-      nextAvail&&React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
-        React.createElement("div",null,
-          React.createElement("div",{style:{fontSize:10,color:"#4a8a4a",letterSpacing:2,fontWeight:700,marginBottom:2}},"NEXT AVAILABLE"),
-          React.createElement("div",{style:{fontSize:14,color:"#f0ebe3",fontWeight:700}},new Date(nextAvail.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})+" · "+fmt12(nextAvail.time))
-        ),
-        React.createElement(Btn,{onClick:function(){setDate(nextAvail.date);setTime(nextAvail.time);},style:{background:C.red,color:"#fff",padding:"9px 16px",fontSize:13,fontFamily:"'Bebas Neue',cursive",letterSpacing:1,flexShrink:0}},"BOOK IT")
-      )
-    ),
-    React.createElement("div",{style:{marginBottom:24}},
-      React.createElement(Lbl,{text:"Pick a Date"}),
-      React.createElement("input",{type:"date",min:todayStr(),value:date,onChange:function(e){setDate(e.target.value);},style:IS({colorScheme:"dark"})})
-    ),
-    date&&React.createElement("div",{style:{marginBottom:28}},
-      React.createElement(Lbl,{text:"Available Times",sub:svc.duration+" min slots"}),
-      calWarn&&React.createElement("div",{style:{padding:"10px 14px",background:"#1a1000",border:"1px solid #8B6000",fontSize:12,color:"#f0c060",marginBottom:12}},"⚠️ Calendar temporarily unavailable — showing estimated open slots."),
-      loading?React.createElement("div",{style:{padding:24,textAlign:"center"}},React.createElement(Dots),React.createElement("div",{style:{fontSize:13,color:C.dim,marginTop:10}},"Checking availability...")):
-      slots.length===0?React.createElement("div",{style:{padding:20,textAlign:"center",color:"#888",fontSize:13,border:"1px dashed "+C.border}},"No open slots — try another date."):
-      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}},
-        slots.map(function(s){return React.createElement(Btn,{key:s,onClick:function(){setTime(s);},style:{padding:"12px 6px",background:time===s?C.red:"#1a1a1a",color:time===s?"#fff":"#ddd",border:"1px solid "+(time===s?C.red:C.border),fontSize:14,fontWeight:700}},fmt12(s));})
-      )
-    ),
-    React.createElement("div",{style:{display:"flex",gap:10}},
-      React.createElement(Btn,{onClick:function(){setStep(0);},style:{flex:1,padding:"14px",background:"#1a1a1a",color:"#ccc",border:"1px solid "+C.border,fontSize:14}},"← Back"),
-      React.createElement(Btn,{onClick:function(){if(date&&time)setStep(2);},disabled:!date||!time,style:{flex:2,padding:"14px",background:date&&time?C.red:"#2a1a1a",color:date&&time?"#fff":"#555",fontFamily:"'Bebas Neue',cursive",fontSize:20,letterSpacing:2}},"NEXT →")
-    )
-  );
-  if(step===2)return React.createElement("div",{style:{height:"100%",overflowY:"auto",background:C.bg,padding:"20px 20px 40px"}},
-    React.createElement("div",{style:{background:"#111",border:"1px solid "+C.border,padding:"12px 16px",marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center"}},
-      React.createElement("div",null,
-        React.createElement("div",{style:{fontSize:13,color:"#ccc"}},svc.name),
-        React.createElement("div",{style:{fontSize:13,color:"#aaa",marginTop:2}},"📅 "+date+" · 🕐 "+fmt12(time))
-      ),
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:24,color:C.red}},"$"+svc.price)
-    ),
-    React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:20}},
-      React.createElement("div",null,React.createElement(Lbl,{text:"Your Name",err:errors.name}),React.createElement("input",{style:IS(),value:form.name,onChange:function(e){setF("name",e.target.value);},placeholder:"First name",autoCapitalize:"words"})),
-      React.createElement("div",null,React.createElement(Lbl,{text:"Phone Number",err:errors.phone}),React.createElement("input",{style:IS(),value:form.phone,onChange:function(e){setF("phone",e.target.value);},placeholder:"(401) 555-0000",type:"tel"})),
-      React.createElement("div",null,
-        React.createElement(Lbl,{text:"Appointment Type"}),
-        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginTop:4}},
-          RECURRING.map(function(o){return React.createElement(Btn,{key:o,onClick:function(){setF("recurring",o);},style:{padding:"9px 13px",background:form.recurring===o?C.red:"#1a1a1a",color:form.recurring===o?"#fff":"#ccc",border:"1px solid "+(form.recurring===o?C.red:C.border),fontSize:13}},o);})
-        )
-      ),
-      React.createElement("div",null,React.createElement(Lbl,{text:"Style Notes (optional)",sub:"Fade number, beard length, etc."}),React.createElement("textarea",{style:Object.assign({},IS(),{resize:"none"}),value:form.notes,onChange:function(e){setF("notes",e.target.value);},placeholder:"e.g. Low 2 on sides, taper in back...",rows:3})),
-      React.createElement("div",{style:{display:"flex",gap:10,marginTop:4}},
-        React.createElement(Btn,{onClick:function(){setStep(1);},style:{flex:1,padding:"14px",background:"#1a1a1a",color:"#ccc",border:"1px solid "+C.border,fontSize:14}},"← Back"),
-        React.createElement(Btn,{onClick:submit,disabled:saving,style:{flex:2,padding:"14px",background:saving?"#4a0000":C.red,color:"#fff",fontFamily:"'Bebas Neue',cursive",fontSize:20,letterSpacing:2}},saving?"SAVING...":"CONFIRM 💈")
-      )
-    )
-  );
-  return React.createElement("div",{style:{height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,gap:18,background:C.bg,textAlign:"center"}},
-    React.createElement("div",{style:{fontSize:56}},"✅"),
-    React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:28,letterSpacing:3,color:C.green}},"YOU'RE BOOKED!"),
-    React.createElement("div",{style:{fontSize:13,color:"#bbb"}},"Esteban will see you at Shear Perfection 💈"),
-    React.createElement("div",{style:{background:"#111",border:"1px solid "+C.border,padding:18,width:"100%",maxWidth:360,textAlign:"left"}},
-      [["Service",last?last.service:""],["Date",last?last.date:""],["Time",fmt12(last?last.time:"")],["Duration",svc?svc.duration+" min":""],["Price",last?"$"+last.price:""],["Recurring",last?last.recurring:""]].map(function(kv){
-        return React.createElement("div",{key:kv[0],style:{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #1a1a1a",fontSize:13}},
-          React.createElement("span",{style:{color:"#888"}},kv[0]),
-          React.createElement("span",{style:{color:"#f0ebe3",fontWeight:600}},kv[1])
-        );
-      })
-    ),
-    React.createElement(Btn,{onClick:function(){dlICS(last);},style:{width:"100%",maxWidth:360,padding:"14px",background:"#1a3a1a",color:"#6fcf6f",border:"1px solid "+C.green,fontSize:14,fontFamily:"inherit"}},"🍎 Save to Apple Calendar"),
-    React.createElement(Btn,{onClick:function(){window.open(gCalLink(last),"_blank");},style:{width:"100%",maxWidth:360,padding:"14px",background:"#0a1a2a",color:"#6fa8ff",border:"1px solid #2a4a6a",fontSize:14,fontFamily:"inherit"}},"📅 Save to Google Calendar"),
-    React.createElement(Btn,{onClick:reset,style:{width:"100%",maxWidth:360,padding:"14px",background:C.red,color:"#fff",fontFamily:"'Bebas Neue',cursive",fontSize:18,letterSpacing:2}},"BOOK ANOTHER")
-  );
+var allBookings=props.allBookings;var settings=props.settings;
+var ss=useState(0);var step=ss[0];var setStep=ss[1];
+var svs=useState(null);var svc=svs[0];var setSvc=svs[1];
+var dts=useState(””);var date=dts[0];var setDate=dts[1];
+var tms=useState(””);var time=tms[0];var setTime=tms[1];
+var fms=useState({name:””,phone:””,notes:””,recurring:“One-time”});var form=fms[0];var setForm=fms[1];
+var ers=useState({});var errors=ers[0];var setErrors=ers[1];
+var sls=useState([]);var slots=sls[0];var setSlots=sls[1];
+var lds=useState(false);var loading=lds[0];var setLoading=lds[1];
+var cws=useState(false);var calWarn=cws[0];var setCalWarn=cws[1];
+var nas=useState(null);var nextAvail=nas[0];var setNextAvail=nas[1];
+var sns=useState(false);var searchingNext=sns[0];var setSearchingNext=sns[1];
+var svgs=useState(false);var saving=svgs[0];var setSaving=svgs[1];
+var lss=useState(null);var last=lss[0];var setLast=lss[1];
+function setF(k,v){setForm(function(f){var n=Object.assign({},f);n[k]=v;return n;});}
+var svcName=svc?svc.name:null;
+useEffect(function(){
+if(!date||!svcName)return;
+setSlots([]);setTime(””);setLoading(true);setCalWarn(false);
+var sv=SERVICES.find(function(s){return s.name===svcName;});
+if(!sv)return;
+var dur=sv.duration;
+if(settings.calUrl){
+fetchGCal(settings.calUrl).then(function(r){
+var ce=r||[];if(r===null)setCalWarn(true);
+setSlots(genSlots(date,dur,ce,allBookings,settings));
+setLoading(false);
+});
+} else {
+setSlots(genSlots(date,dur,[],allBookings,settings));
+setLoading(false);
+}
+},[date,svcName]);
+useEffect(function(){
+if(!svcName)return;
+setNextAvail(null);setSearchingNext(true);
+var sv=SERVICES.find(function(s){return s.name===svcName;});
+if(!sv){setSearchingNext(false);return;}
+var dur=sv.duration;
+var today=new Date();
+function checkDays(ce,d){
+if(d>=14){setSearchingNext(false);return;}
+var dt=new Date(today);dt.setDate(today.getDate()+d);
+var ds=dt.toISOString().split(“T”)[0];
+var s=genSlots(ds,dur,ce,allBookings,settings);
+if(s.length>0){setNextAvail({date:ds,time:s[0]});setSearchingNext(false);}
+else checkDays(ce,d+1);
+}
+if(settings.calUrl){
+fetchGCal(settings.calUrl).then(function(r){checkDays(r&&r.length?r:[],0);});
+} else {checkDays([],0);}
+},[svcName]);
+function validate(){var e={};if(!form.name.trim())e.name=“Required”;if(!form.phone.trim())e.phone=“Required”;setErrors(e);return!Object.keys(e).length;}
+function submit(){
+if(!validate())return;setSaving(true);
+var b=Object.assign({},form,{service:svc.name,price:svc.price,date:date,time:time,at:new Date().toISOString()});
+var isRecurring=form.recurring&&form.recurring!==“One-time”;
+var p=isRecurring?fbSaveSeries(b):fbSave(b);
+p.then(function(){
+setLast(b);
+if(settings.ntfyTopic){
+var dispDate=new Date(date+“T12:00:00”).toLocaleDateString(“en-US”,{weekday:“short”,month:“short”,day:“numeric”});
+sendNotif(settings.ntfyTopic,“💈 New Booking!”,b.name+” · “+svc.name+”\n”+dispDate+” at “+fmt12(time)+(isRecurring?” (”+form.recurring+”)”:””)+”\n”+b.phone);
+}
+setSaving(false);setStep(3);
+}).catch(function(e){
+setSaving(false);
+if(e.message===“SLOT_TAKEN”){alert(“⚠️ That slot was just taken! Please pick a different time.”);setTime(””);setStep(1);}
+else alert(“Couldn’t save — check connection.”);
+});
+}
+function reset(){setSvc(null);setDate(””);setTime(””);setForm({name:””,phone:””,notes:””,recurring:“One-time”});setStep(0);}
+if(step===0)return React.createElement(“div”,{style:{height:“100%”,overflowY:“auto”,background:C.bg,display:“flex”,flexDirection:“column”,alignItems:“center”,padding:24,gap:20}},
+React.createElement(“div”,{style:{textAlign:“center”,paddingTop:8}},
+React.createElement(“div”,{style:{fontSize:46,marginBottom:10}},“💈”),
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:26,letterSpacing:3,color:C.text,marginBottom:4}},“SHEAR PERFECTION”),
+React.createElement(“div”,{style:{fontSize:12,color:C.red,letterSpacing:2}},“BOOK WITH ESTEBAN • 24/7”)
+),
+React.createElement(“div”,{style:{width:“100%”,maxWidth:420,background:”#111”,border:“1px solid #1e1e1e”}},
+React.createElement(“div”,{style:{padding:“10px 16px”,background:C.red,fontFamily:”‘Bebas Neue’,cursive”,fontSize:14,letterSpacing:2}},“TAP A SERVICE TO BOOK”),
+SERVICES.map(function(s){
+return React.createElement(“div”,{key:s.name,onClick:function(){setSvc(s);setStep(1);},style:{display:“flex”,justifyContent:“space-between”,alignItems:“center”,padding:“13px 16px”,borderBottom:“1px solid #1a1a1a”,cursor:“pointer”,touchAction:“manipulation”}},
+React.createElement(“div”,null,
+React.createElement(“div”,{style:{color:”#f0ebe3”,fontSize:14,fontWeight:600}},s.name),
+React.createElement(“div”,{style:{color:”#888”,fontSize:11,marginTop:2}},“⏱ “+s.duration+” min”)
+),
+React.createElement(“div”,{style:{display:“flex”,alignItems:“center”,gap:10}},
+React.createElement(“span”,{style:{color:”#fff”,fontWeight:700,fontSize:15}},”$”+s.price),
+React.createElement(“span”,{style:{color:C.red,fontSize:18}},”›”)
+)
+);
+})
+)
+);
+if(step===1)return React.createElement(“div”,{style:{height:“100%”,overflowY:“auto”,background:C.bg,padding:“20px 20px 40px”}},
+React.createElement(“div”,{style:{background:C.red,padding:“14px 16px”,marginBottom:24,display:“flex”,justifyContent:“space-between”,alignItems:“center”}},
+React.createElement(“div”,null,
+React.createElement(“div”,{style:{fontSize:11,color:“rgba(255,255,255,0.7)”,letterSpacing:1}},“SELECTED”),
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:18,color:”#fff”}},svc.name),
+React.createElement(“div”,{style:{fontSize:12,color:“rgba(255,255,255,0.8)”,marginTop:2}},“⏱ “+svc.duration+” min”)
+),
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:28,color:”#fff”}},”$”+svc.price)
+),
+(searchingNext||nextAvail)&&React.createElement(“div”,{style:{marginBottom:16,background:”#0a1a0a”,border:“1px solid #2a4a2a”,padding:“12px 14px”}},
+searchingNext?React.createElement(“div”,{style:{fontSize:12,color:”#4a8a4a”}},“🔍 Finding next available slot…”):
+nextAvail&&React.createElement(“div”,{style:{display:“flex”,alignItems:“center”,justifyContent:“space-between”,gap:10}},
+React.createElement(“div”,null,
+React.createElement(“div”,{style:{fontSize:10,color:”#4a8a4a”,letterSpacing:2,fontWeight:700,marginBottom:2}},“NEXT AVAILABLE”),
+React.createElement(“div”,{style:{fontSize:14,color:”#f0ebe3”,fontWeight:700}},new Date(nextAvail.date+“T12:00:00”).toLocaleDateString(“en-US”,{weekday:“short”,month:“short”,day:“numeric”})+” · “+fmt12(nextAvail.time))
+),
+React.createElement(Btn,{onClick:function(){setDate(nextAvail.date);setTime(nextAvail.time);},style:{background:C.red,color:”#fff”,padding:“9px 16px”,fontSize:13,fontFamily:”‘Bebas Neue’,cursive”,letterSpacing:1,flexShrink:0}},“BOOK IT”)
+)
+),
+React.createElement(“div”,{style:{marginBottom:24}},
+React.createElement(Lbl,{text:“Pick a Date”}),
+React.createElement(“input”,{type:“date”,min:todayStr(),value:date,onChange:function(e){setDate(e.target.value);},style:IS({colorScheme:“dark”})})
+),
+date&&React.createElement(“div”,{style:{marginBottom:28}},
+React.createElement(Lbl,{text:“Available Times”,sub:svc.duration+” min slots”}),
+calWarn&&React.createElement(“div”,{style:{padding:“10px 14px”,background:”#1a1000”,border:“1px solid #8B6000”,fontSize:12,color:”#f0c060”,marginBottom:12}},“⚠️ Calendar temporarily unavailable — showing estimated open slots.”),
+loading?React.createElement(“div”,{style:{padding:24,textAlign:“center”}},React.createElement(Dots),React.createElement(“div”,{style:{fontSize:13,color:C.dim,marginTop:10}},“Checking availability…”)):
+slots.length===0?React.createElement(“div”,{style:{padding:20,textAlign:“center”,color:”#888”,fontSize:13,border:“1px dashed “+C.border}},“No open slots — try another date.”):
+React.createElement(“div”,{style:{display:“grid”,gridTemplateColumns:“repeat(3,1fr)”,gap:8}},
+slots.map(function(s){return React.createElement(Btn,{key:s,onClick:function(){setTime(s);},style:{padding:“12px 6px”,background:time===s?C.red:”#1a1a1a”,color:time===s?”#fff”:”#ddd”,border:“1px solid “+(time===s?C.red:C.border),fontSize:14,fontWeight:700}},fmt12(s));})
+)
+),
+React.createElement(“div”,{style:{display:“flex”,gap:10}},
+React.createElement(Btn,{onClick:function(){setStep(0);},style:{flex:1,padding:“14px”,background:”#1a1a1a”,color:”#ccc”,border:“1px solid “+C.border,fontSize:14}},“← Back”),
+React.createElement(Btn,{onClick:function(){if(date&&time)setStep(2);},disabled:!date||!time,style:{flex:2,padding:“14px”,background:date&&time?C.red:”#2a1a1a”,color:date&&time?”#fff”:”#555”,fontFamily:”‘Bebas Neue’,cursive”,fontSize:20,letterSpacing:2}},“NEXT →”)
+)
+);
+if(step===2)return React.createElement(“div”,{style:{height:“100%”,overflowY:“auto”,background:C.bg,padding:“20px 20px 40px”}},
+React.createElement(“div”,{style:{background:”#111”,border:“1px solid “+C.border,padding:“12px 16px”,marginBottom:24,display:“flex”,justifyContent:“space-between”,alignItems:“center”}},
+React.createElement(“div”,null,
+React.createElement(“div”,{style:{fontSize:13,color:”#ccc”}},svc.name),
+React.createElement(“div”,{style:{fontSize:13,color:”#aaa”,marginTop:2}},“📅 “+date+” · 🕐 “+fmt12(time))
+),
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:24,color:C.red}},”$”+svc.price)
+),
+React.createElement(“div”,{style:{display:“flex”,flexDirection:“column”,gap:20}},
+React.createElement(“div”,null,React.createElement(Lbl,{text:“Your Name”,err:errors.name}),React.createElement(“input”,{style:IS(),value:form.name,onChange:function(e){setF(“name”,e.target.value);},placeholder:“First name”,autoCapitalize:“words”})),
+React.createElement(“div”,null,React.createElement(Lbl,{text:“Phone Number”,err:errors.phone}),React.createElement(“input”,{style:IS(),value:form.phone,onChange:function(e){setF(“phone”,e.target.value);},placeholder:”(401) 555-0000”,type:“tel”})),
+React.createElement(“div”,null,
+React.createElement(Lbl,{text:“Appointment Type”}),
+React.createElement(“div”,{style:{display:“flex”,flexWrap:“wrap”,gap:8,marginTop:4}},
+RECURRING.map(function(o){return React.createElement(Btn,{key:o,onClick:function(){setF(“recurring”,o);},style:{padding:“9px 13px”,background:form.recurring===o?C.red:”#1a1a1a”,color:form.recurring===o?”#fff”:”#ccc”,border:“1px solid “+(form.recurring===o?C.red:C.border),fontSize:13}},o);})
+)
+),
+React.createElement(“div”,null,React.createElement(Lbl,{text:“Style Notes (optional)”,sub:“Fade number, beard length, etc.”}),React.createElement(“textarea”,{style:Object.assign({},IS(),{resize:“none”}),value:form.notes,onChange:function(e){setF(“notes”,e.target.value);},placeholder:“e.g. Low 2 on sides, taper in back…”,rows:3})),
+React.createElement(“div”,{style:{display:“flex”,gap:10,marginTop:4}},
+React.createElement(Btn,{onClick:function(){setStep(1);},style:{flex:1,padding:“14px”,background:”#1a1a1a”,color:”#ccc”,border:“1px solid “+C.border,fontSize:14}},“← Back”),
+React.createElement(Btn,{onClick:submit,disabled:saving,style:{flex:2,padding:“14px”,background:saving?”#4a0000”:C.red,color:”#fff”,fontFamily:”‘Bebas Neue’,cursive”,fontSize:20,letterSpacing:2}},saving?“SAVING…”:“CONFIRM 💈”)
+)
+)
+);
+return React.createElement(“div”,{style:{height:“100%”,display:“flex”,flexDirection:“column”,alignItems:“center”,justifyContent:“center”,padding:28,gap:18,background:C.bg,textAlign:“center”}},
+React.createElement(“div”,{style:{fontSize:56}},“✅”),
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:28,letterSpacing:3,color:C.green}},“YOU’RE BOOKED!”),
+React.createElement(“div”,{style:{fontSize:13,color:”#bbb”}},“Esteban will see you at Shear Perfection 💈”),
+React.createElement(“div”,{style:{background:”#111”,border:“1px solid “+C.border,padding:18,width:“100%”,maxWidth:360,textAlign:“left”}},
+[[“Service”,last?last.service:””],[“Date”,last?last.date:””],[“Time”,fmt12(last?last.time:””)],[“Duration”,svc?svc.duration+” min”:””],[“Price”,last?”$”+last.price:””],[“Recurring”,last?last.recurring:””]].map(function(kv){
+return React.createElement(“div”,{key:kv[0],style:{display:“flex”,justifyContent:“space-between”,padding:“7px 0”,borderBottom:“1px solid #1a1a1a”,fontSize:13}},
+React.createElement(“span”,{style:{color:”#888”}},kv[0]),
+React.createElement(“span”,{style:{color:”#f0ebe3”,fontWeight:600}},kv[1])
+);
+})
+),
+React.createElement(Btn,{onClick:function(){dlICS(last);},style:{width:“100%”,maxWidth:360,padding:“14px”,background:”#1a3a1a”,color:”#6fcf6f”,border:“1px solid “+C.green,fontSize:14,fontFamily:“inherit”}},“🍎 Save to Apple Calendar”),
+React.createElement(Btn,{onClick:function(){window.open(gCalLink(last),”_blank”);},style:{width:“100%”,maxWidth:360,padding:“14px”,background:”#0a1a2a”,color:”#6fa8ff”,border:“1px solid #2a4a6a”,fontSize:14,fontFamily:“inherit”}},“📅 Save to Google Calendar”),
+React.createElement(Btn,{onClick:reset,style:{width:“100%”,maxWidth:360,padding:“14px”,background:C.red,color:”#fff”,fontFamily:”‘Bebas Neue’,cursive”,fontSize:18,letterSpacing:2}},“BOOK ANOTHER”)
+);
 }
 
 function renderBookingCard(b,deleting,deleteModal,confirmDelete){
-  var sv=SERVICES.find(function(s){return s.name===b.service;});
-  var isDeleting=deleting===b._id||deleting===b.seriesId;
-  return React.createElement("div",{key:b._id,style:{background:"#161616",border:"1px solid #222",padding:"14px",display:"flex",gap:10,alignItems:"flex-start"}},
-    React.createElement("div",{style:{width:3,alignSelf:"stretch",background:b.seriesId?"#2a6aaa":"#8B0000",flexShrink:0}}),
-    React.createElement("div",{style:{flex:1,minWidth:0}},
-      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",gap:6,alignItems:"flex-start"}},
-        React.createElement("div",null,
-          React.createElement("div",{style:{fontWeight:700,fontSize:15,color:"#f0ebe3"}},b.name),
-          React.createElement("div",{style:{fontSize:12,color:"#888",marginTop:2}},b.phone)
-        ),
-        React.createElement("div",{style:{background:"#8B0000",color:"#fff",fontSize:11,fontWeight:700,padding:"3px 8px",flexShrink:0}},"$"+b.price)
-      ),
-      React.createElement("div",{style:{fontSize:13,color:"#bbb",marginTop:5}},b.service),
-      React.createElement("div",{style:{display:"flex",gap:12,marginTop:5,flexWrap:"wrap"}},
-        React.createElement("span",{style:{fontSize:12,color:"#888"}},"📅 "+b.date),
-        React.createElement("span",{style:{fontSize:12,color:"#888"}},"🕐 "+fmt12(b.time)),
-        sv&&React.createElement("span",{style:{fontSize:12,color:"#888"}},"⏱ "+sv.duration+" min")
-      ),
-      b.seriesId&&React.createElement("div",{style:{fontSize:11,color:"#7ab8ff",marginTop:4}},"🔁 "+b.recurring+" · recurring"),
-      !b.seriesId&&b.recurring&&b.recurring!=="One-time"&&React.createElement("div",{style:{fontSize:11,color:"#4caf50",marginTop:4}},"🔁 "+b.recurring),
-      b.notes&&React.createElement("div",{style:{marginTop:7,padding:"5px 10px",background:"#111",fontSize:12,color:"#888",fontStyle:"italic"}},"✂️ "+b.notes),
-      React.createElement("div",{style:{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}},
-        React.createElement(Btn,{onClick:function(){dlICS(b);},style:{background:"none",border:"1px solid #1a3a1a",color:"#6fcf6f",padding:"4px 10px",fontSize:11,fontFamily:"inherit"}},"🍎 Apple Cal"),
-        React.createElement(Btn,{onClick:function(){window.open(gCalLink(b),"_blank");},style:{background:"none",border:"1px solid #1a2a3a",color:"#6fa8ff",padding:"4px 10px",fontSize:11,fontFamily:"inherit"}},"📅 Google Cal")
-      )
-    ),
-    React.createElement(Btn,{onClick:function(){confirmDelete(b._id,b.seriesId,b.name);},disabled:isDeleting,style:{background:"none",border:"1px solid #222",color:isDeleting?"#333":"#aaa",padding:"6px 9px",fontSize:13,flexShrink:0,fontFamily:"inherit"}},isDeleting?"...":"✕")
-  );
+var sv=SERVICES.find(function(s){return s.name===b.service;});
+var isDeleting=deleting===b._id||deleting===b.seriesId;
+return React.createElement(“div”,{key:b._id,style:{background:”#161616”,border:“1px solid #222”,padding:“14px”,display:“flex”,gap:10,alignItems:“flex-start”}},
+React.createElement(“div”,{style:{width:3,alignSelf:“stretch”,background:b.seriesId?”#2a6aaa”:”#8B0000”,flexShrink:0}}),
+React.createElement(“div”,{style:{flex:1,minWidth:0}},
+React.createElement(“div”,{style:{display:“flex”,justifyContent:“space-between”,gap:6,alignItems:“flex-start”}},
+React.createElement(“div”,null,
+React.createElement(“div”,{style:{fontWeight:700,fontSize:15,color:”#f0ebe3”}},b.name),
+React.createElement(“div”,{style:{fontSize:12,color:”#888”,marginTop:2}},b.phone)
+),
+React.createElement(“div”,{style:{background:”#8B0000”,color:”#fff”,fontSize:11,fontWeight:700,padding:“3px 8px”,flexShrink:0}},”$”+b.price)
+),
+React.createElement(“div”,{style:{fontSize:13,color:”#bbb”,marginTop:5}},b.service),
+React.createElement(“div”,{style:{display:“flex”,gap:12,marginTop:5,flexWrap:“wrap”}},
+React.createElement(“span”,{style:{fontSize:12,color:”#888”}},“📅 “+b.date),
+React.createElement(“span”,{style:{fontSize:12,color:”#888”}},“🕐 “+fmt12(b.time)),
+sv&&React.createElement(“span”,{style:{fontSize:12,color:”#888”}},“⏱ “+sv.duration+” min”)
+),
+b.seriesId&&React.createElement(“div”,{style:{fontSize:11,color:”#7ab8ff”,marginTop:4}},“🔁 “+b.recurring+” · recurring”),
+!b.seriesId&&b.recurring&&b.recurring!==“One-time”&&React.createElement(“div”,{style:{fontSize:11,color:”#4caf50”,marginTop:4}},“🔁 “+b.recurring),
+b.notes&&React.createElement(“div”,{style:{marginTop:7,padding:“5px 10px”,background:”#111”,fontSize:12,color:”#888”,fontStyle:“italic”}},“✂️ “+b.notes),
+React.createElement(“div”,{style:{display:“flex”,gap:8,marginTop:8,flexWrap:“wrap”}},
+React.createElement(Btn,{onClick:function(){dlICS(b);},style:{background:“none”,border:“1px solid #1a3a1a”,color:”#6fcf6f”,padding:“4px 10px”,fontSize:11,fontFamily:“inherit”}},“🍎 Apple Cal”),
+React.createElement(Btn,{onClick:function(){window.open(gCalLink(b),”_blank”);},style:{background:“none”,border:“1px solid #1a2a3a”,color:”#6fa8ff”,padding:“4px 10px”,fontSize:11,fontFamily:“inherit”}},“📅 Google Cal”)
+)
+),
+React.createElement(Btn,{onClick:function(){confirmDelete(b._id,b.seriesId,b.name);},disabled:isDeleting,style:{background:“none”,border:“1px solid #222”,color:isDeleting?”#333”:”#aaa”,padding:“6px 9px”,fontSize:13,flexShrink:0,fontFamily:“inherit”}},isDeleting?”…”:“✕”)
+);
 }
 
 function Dashboard(props){
-  var bookings=props.bookings;var settings=props.settings;
-  var dls=useState(null);var deleting=dls[0];var setDeleting=dls[1];
-  var dms=useState(null);var deleteModal=dms[0];var setDeleteModal=dms[1];
-  var exs=useState(false);var extending=exs[0];var setExtending=exs[1];
-  var ges=useState([]);var gcalEvents=ges[0];var setGcalEvents=ges[1];
-  var wos=useState(0);var weekOffset=wos[0];var setWeekOffset=wos[1];
-  useEffect(function(){
-    if(!bookings.length)return;
-    var oneYearStr=new Date(new Date().setFullYear(new Date().getFullYear()+1)).toISOString().split("T")[0];
-    var seriesMap={};
-    bookings.forEach(function(b){if(!b.seriesId)return;if(!seriesMap[b.seriesId])seriesMap[b.seriesId]={latest:"",booking:b};if(b.date>seriesMap[b.seriesId].latest)seriesMap[b.seriesId].latest=b.date;});
-    var toExtend=Object.keys(seriesMap).filter(function(k){return seriesMap[k].latest<oneYearStr;});
-    if(!toExtend.length)return;
-    setExtending(true);
-    var chain=Promise.resolve();
-    toExtend.forEach(function(k){
-      var v=seriesMap[k];var b=v.booking;
-      if(!b.seriesInterval)return;
-      chain=chain.then(function(){return fbExtendSeries(b.seriesId,b.seriesInterval,b);}).catch(function(e){console.error("extend",e);});
-    });
-    chain.then(function(){setExtending(false);});
-  },[bookings.length]);
-  useEffect(function(){if(!settings.calUrl)return;fetchGCal(settings.calUrl).then(function(evs){setGcalEvents(evs||[]);});},[settings.calUrl]);
-  function confirmDelete(id,seriesId,name){if(seriesId)setDeleteModal({id:id,seriesId:seriesId,name:name});else doDeleteOne(id);}
-  function doDeleteOne(id){setDeleting(id);setDeleteModal(null);fbDeleteOne(id).catch(function(){alert("Couldn't delete.");}).then(function(){setDeleting(null);});}
-  function doDeleteSeries(seriesId){setDeleteModal(null);setDeleting(seriesId);fbDeleteSeries(seriesId).catch(function(){alert("Couldn't delete series.");}).then(function(){setDeleting(null);});}
-  var now=new Date();
-  var diffToMon=now.getDay()===0?-6:1-now.getDay();
-  var weekStart=new Date(now);weekStart.setDate(now.getDate()+diffToMon+(weekOffset*7));weekStart.setHours(0,0,0,0);
-  var weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);weekEnd.setHours(23,59,59,999);
-  var weekStartStr=weekStart.toISOString().split("T")[0];
-  var weekEndStr=weekEnd.toISOString().split("T")[0];
-  var isCurrentWeek=weekOffset===0;
-  var todayISO=todayStr();
-  var td=new Date().toDateString();
-  var todayN=bookings.filter(function(b){try{return new Date(b.at).toDateString()===td;}catch(e){return false;}}).length;
-  var recN=new Set(bookings.filter(function(b){return b.seriesId;}).map(function(b){return b.seriesId;})).size;
-  var weekAppBookings=bookings.filter(function(b){return b.date>=weekStartStr&&b.date<=weekEndStr;});
-  var weekAppRev=weekAppBookings.reduce(function(s,b){return s+(Number(b.price)||0);},0);
-  var weekGcalCount=gcalEvents.filter(function(ev){
-    var ds=ev.start.split("T")[0];
-    if(ds<weekStartStr||ds>weekEndStr)return false;
-    if(settings.excludeBlocks!==false&&ev.start.indexOf("T")>-1){
-      var evD=new Date(ev.start);
-      var dow=evD.getDay();var evMin=evD.getHours()*60+evD.getMinutes();
-      var evEndD=new Date(ev.end);var evEndMin=evEndD.getHours()*60+evEndD.getMinutes();
-      var blocked=PERSONAL_BLOCKS.some(function(bl){return bl.dow===dow&&evMin>=bl.startH*60+bl.startM&&evEndMin<=bl.endH*60+bl.endM;});
-      if(blocked)return false;
-    }
-    var gcalTime=ev.start.indexOf("T")>-1?new Date(ev.start).toTimeString().slice(0,5):null;
-    return !weekAppBookings.some(function(b){
-      if(b.date!==ds||!gcalTime)return false;
-      var btp=b.time.split(":");var bh=parseInt(btp[0]);var bm=parseInt(btp[1]);
-      var gtp=gcalTime.split(":");var gh=parseInt(gtp[0]);var gm=parseInt(gtp[1]);
-      return Math.abs((bh*60+bm)-(gh*60+gm))<=15;
-    });
-  }).length;
-  var weekRev=weekAppRev+(weekGcalCount*40);
-  var seenSeries=new Set();
-  var upcoming=bookings.filter(function(b){return b.date>=todayISO;}).sort(function(a,b){return(a.date+a.time).localeCompare(b.date+b.time);}).filter(function(b){if(!b.seriesId)return true;if(seenSeries.has(b.seriesId))return false;seenSeries.add(b.seriesId);return true;});
-  var past=bookings.filter(function(b){return b.date<todayISO;}).sort(function(a,b){return(b.date+b.time).localeCompare(a.date+a.time);}).slice(0,5);
-  var weekLabel=weekStart.toLocaleDateString("en-US",{month:"short",day:"numeric"})+" – "+weekEnd.toLocaleDateString("en-US",{month:"short",day:"numeric"});
-  return React.createElement("div",{style:{height:"100%",overflowY:"auto",background:C.bg,padding:16}},
-    deleteModal&&React.createElement("div",{style:{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.85)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:24}},
-      React.createElement("div",{style:{background:"#161616",border:"1px solid "+C.red,padding:24,width:"100%",maxWidth:340}},
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:18,letterSpacing:2,color:C.text,marginBottom:8}},"DELETE APPOINTMENT"),
-        React.createElement("div",{style:{fontSize:13,color:"#aaa",marginBottom:20,lineHeight:1.7}},React.createElement("strong",{style:{color:"#f0ebe3"}},deleteModal.name)," has a recurring series. What would you like to delete?"),
-        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-          React.createElement(Btn,{onClick:function(){doDeleteOne(deleteModal.id);},style:{padding:"13px",background:"#1a1a1a",color:"#f0ebe3",border:"1px solid "+C.border,fontSize:14,fontFamily:"inherit",textAlign:"left"}},React.createElement("div",{style:{fontWeight:700}},"Just this appointment"),React.createElement("div",{style:{fontSize:11,color:"#888",marginTop:2}},"Remove only this date, keep the rest")),
-          React.createElement(Btn,{onClick:function(){doDeleteSeries(deleteModal.seriesId);},style:{padding:"13px",background:"#1a0000",color:"#ff6b6b",border:"1px solid "+C.red,fontSize:14,fontFamily:"inherit",textAlign:"left"}},React.createElement("div",{style:{fontWeight:700}},"Entire series"),React.createElement("div",{style:{fontSize:11,color:"#aa4444",marginTop:2}},"Remove all recurring appointments")),
-          React.createElement(Btn,{onClick:function(){setDeleteModal(null);},style:{padding:"11px",background:"none",color:"#888",border:"1px solid "+C.border,fontSize:13,fontFamily:"inherit"}},"Cancel")
-        )
-      )
-    ),
-    React.createElement("div",{style:{marginBottom:16}},
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:24,letterSpacing:3,color:C.text}},"ESTEBAN'S ",React.createElement("span",{style:{color:C.red}},"DASHBOARD")),
-      React.createElement("div",{style:{fontSize:10,color:C.dim,letterSpacing:2}},"🔴 LIVE · SYNCS ACROSS ALL DEVICES"+(extending?" · extending series...":""))
-    ),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:18}},
-      [{l:"Total Bookings",v:bookings.length},{l:"Today",v:todayN},{l:"Recurring Clients",v:recN}].map(function(s){
-        return React.createElement("div",{key:s.l,style:{background:C.card,border:"1px solid "+C.border,padding:"12px 14px"}},
-          React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:30,color:C.red,lineHeight:1}},s.v),
-          React.createElement("div",{style:{fontSize:10,color:"#888",letterSpacing:1,textTransform:"uppercase",marginTop:3}},s.l)
-        );
-      }),
-      React.createElement("div",{style:{background:C.card,border:"1px solid "+C.border,padding:"12px 14px",gridColumn:"span 2"}},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
-          React.createElement("div",{style:{fontSize:10,color:"#888",letterSpacing:1,textTransform:"uppercase"}},"Est. Week Revenue"),
-          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
-            React.createElement(Btn,{onClick:function(){setWeekOffset(function(o){return o-1;});},style:{background:"#1a1a1a",color:"#ccc",border:"1px solid "+C.border,padding:"3px 10px",fontSize:14,lineHeight:1}},"‹"),
-            React.createElement("span",{style:{fontSize:10,color:isCurrentWeek?C.red:"#888",fontWeight:700,minWidth:90,textAlign:"center"}},isCurrentWeek?"THIS WEEK":weekOffset<0?Math.abs(weekOffset)+"W AGO":"+"+weekOffset+"W"),
-            React.createElement(Btn,{onClick:function(){setWeekOffset(function(o){return o+1;});},style:{background:"#1a1a1a",color:"#ccc",border:"1px solid "+C.border,padding:"3px 10px",fontSize:14,lineHeight:1}},"›")
-          )
-        ),
-        React.createElement("div",{style:{display:"flex",alignItems:"flex-end",justifyContent:"space-between"}},
-          React.createElement("div",null,
-            React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:36,color:C.red,lineHeight:1}},"$"+weekRev),
-            React.createElement("div",{style:{fontSize:9,color:"#555",marginTop:3}},weekLabel),
-            weekGcalCount>0&&React.createElement("div",{style:{fontSize:9,color:"#7ab8ff",marginTop:2}},weekAppBookings.length+" app + "+weekGcalCount+" gcal × $40")
-          ),
-          !isCurrentWeek&&React.createElement(Btn,{onClick:function(){setWeekOffset(0);},style:{background:"none",color:C.red,border:"1px solid "+C.red,padding:"4px 10px",fontSize:10,fontFamily:"inherit"}},"Today")
-        )
-      )
-    ),
-    bookings.length===0?React.createElement("div",{style:{textAlign:"center",padding:"40px 20px",border:"1px dashed "+C.border,color:"#666"}},
-      React.createElement("div",{style:{fontSize:32,marginBottom:8}},"📅"),
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:18,letterSpacing:2,marginBottom:4}},"NO BOOKINGS YET"),
-      React.createElement("div",{style:{fontSize:13}},"Share your link so clients can start booking!")
-    ):React.createElement("div",null,
-      upcoming.length>0&&React.createElement("div",null,
-        React.createElement("div",{style:{fontSize:10,color:C.red,letterSpacing:2,fontWeight:700,marginBottom:8,textTransform:"uppercase"}},"Upcoming ("+upcoming.length+")"),
-        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:20}},upcoming.map(function(b){return renderBookingCard(b,deleting,deleteModal,confirmDelete);}))
-      ),
-      past.length>0&&React.createElement("div",null,
-        React.createElement("div",{style:{fontSize:10,color:"#555",letterSpacing:2,fontWeight:700,marginBottom:8,textTransform:"uppercase"}},"Recent Past"),
-        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8,opacity:0.5}},past.map(function(b){return renderBookingCard(b,deleting,deleteModal,confirmDelete);}))
-      )
-    )
-  );
+var bookings=props.bookings;var settings=props.settings;
+var dls=useState(null);var deleting=dls[0];var setDeleting=dls[1];
+var dms=useState(null);var deleteModal=dms[0];var setDeleteModal=dms[1];
+var exs=useState(false);var extending=exs[0];var setExtending=exs[1];
+var ges=useState([]);var gcalEvents=ges[0];var setGcalEvents=ges[1];
+var wos=useState(0);var weekOffset=wos[0];var setWeekOffset=wos[1];
+useEffect(function(){
+if(!bookings.length)return;
+var oneYearStr=new Date(new Date().setFullYear(new Date().getFullYear()+1)).toISOString().split(“T”)[0];
+var seriesMap={};
+bookings.forEach(function(b){if(!b.seriesId)return;if(!seriesMap[b.seriesId])seriesMap[b.seriesId]={latest:””,booking:b};if(b.date>seriesMap[b.seriesId].latest)seriesMap[b.seriesId].latest=b.date;});
+var toExtend=Object.keys(seriesMap).filter(function(k){return seriesMap[k].latest<oneYearStr;});
+if(!toExtend.length)return;
+setExtending(true);
+var chain=Promise.resolve();
+toExtend.forEach(function(k){
+var v=seriesMap[k];var b=v.booking;
+if(!b.seriesInterval)return;
+chain=chain.then(function(){return fbExtendSeries(b.seriesId,b.seriesInterval,b);}).catch(function(e){console.error(“extend”,e);});
+});
+chain.then(function(){setExtending(false);});
+},[bookings.length]);
+useEffect(function(){if(!settings.calUrl)return;fetchGCal(settings.calUrl).then(function(evs){setGcalEvents(evs||[]);});},[settings.calUrl]);
+function confirmDelete(id,seriesId,name){if(seriesId)setDeleteModal({id:id,seriesId:seriesId,name:name});else doDeleteOne(id);}
+function doDeleteOne(id){setDeleting(id);setDeleteModal(null);fbDeleteOne(id).catch(function(){alert(“Couldn’t delete.”);}).then(function(){setDeleting(null);});}
+function doDeleteSeries(seriesId){setDeleteModal(null);setDeleting(seriesId);fbDeleteSeries(seriesId).catch(function(){alert(“Couldn’t delete series.”);}).then(function(){setDeleting(null);});}
+var now=new Date();
+var diffToMon=now.getDay()===0?-6:1-now.getDay();
+var weekStart=new Date(now);weekStart.setDate(now.getDate()+diffToMon+(weekOffset*7));weekStart.setHours(0,0,0,0);
+var weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);weekEnd.setHours(23,59,59,999);
+var weekStartStr=weekStart.toISOString().split(“T”)[0];
+var weekEndStr=weekEnd.toISOString().split(“T”)[0];
+var isCurrentWeek=weekOffset===0;
+var todayISO=todayStr();
+var td=new Date().toDateString();
+var todayN=bookings.filter(function(b){try{return new Date(b.at).toDateString()===td;}catch(e){return false;}}).length;
+var recN=new Set(bookings.filter(function(b){return b.seriesId;}).map(function(b){return b.seriesId;})).size;
+var weekAppBookings=bookings.filter(function(b){return b.date>=weekStartStr&&b.date<=weekEndStr;});
+var weekAppRev=weekAppBookings.reduce(function(s,b){return s+(Number(b.price)||0);},0);
+var weekGcalCount=gcalEvents.filter(function(ev){
+var ds=ev.start.split(“T”)[0];
+if(ds<weekStartStr||ds>weekEndStr)return false;
+if(settings.excludeBlocks!==false&&ev.start.indexOf(“T”)>-1){
+var evD=new Date(ev.start);
+var dow=evD.getDay();var evMin=evD.getHours()*60+evD.getMinutes();
+var evEndD=new Date(ev.end);var evEndMin=evEndD.getHours()*60+evEndD.getMinutes();
+var blocked=PERSONAL_BLOCKS.some(function(bl){return bl.dow===dow&&evMin>=bl.startH*60+bl.startM&&evEndMin<=bl.endH*60+bl.endM;});
+if(blocked)return false;
+}
+var gcalTime=ev.start.indexOf(“T”)>-1?new Date(ev.start).toTimeString().slice(0,5):null;
+return !weekAppBookings.some(function(b){
+if(b.date!==ds||!gcalTime)return false;
+var btp=b.time.split(”:”);var bh=parseInt(btp[0]);var bm=parseInt(btp[1]);
+var gtp=gcalTime.split(”:”);var gh=parseInt(gtp[0]);var gm=parseInt(gtp[1]);
+return Math.abs((bh*60+bm)-(gh*60+gm))<=15;
+});
+}).length;
+var weekRev=weekAppRev+(weekGcalCount*40);
+var seenSeries=new Set();
+var upcoming=bookings.filter(function(b){return b.date>=todayISO;}).sort(function(a,b){return(a.date+a.time).localeCompare(b.date+b.time);}).filter(function(b){if(!b.seriesId)return true;if(seenSeries.has(b.seriesId))return false;seenSeries.add(b.seriesId);return true;});
+var past=bookings.filter(function(b){return b.date<todayISO;}).sort(function(a,b){return(b.date+b.time).localeCompare(a.date+a.time);}).slice(0,5);
+var weekLabel=weekStart.toLocaleDateString(“en-US”,{month:“short”,day:“numeric”})+” – “+weekEnd.toLocaleDateString(“en-US”,{month:“short”,day:“numeric”});
+return React.createElement(“div”,{style:{height:“100%”,overflowY:“auto”,background:C.bg,padding:16}},
+deleteModal&&React.createElement(“div”,{style:{position:“fixed”,top:0,left:0,right:0,bottom:0,background:“rgba(0,0,0,0.85)”,zIndex:100,display:“flex”,alignItems:“center”,justifyContent:“center”,padding:24}},
+React.createElement(“div”,{style:{background:”#161616”,border:“1px solid “+C.red,padding:24,width:“100%”,maxWidth:340}},
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:18,letterSpacing:2,color:C.text,marginBottom:8}},“DELETE APPOINTMENT”),
+React.createElement(“div”,{style:{fontSize:13,color:”#aaa”,marginBottom:20,lineHeight:1.7}},React.createElement(“strong”,{style:{color:”#f0ebe3”}},deleteModal.name),” has a recurring series. What would you like to delete?”),
+React.createElement(“div”,{style:{display:“flex”,flexDirection:“column”,gap:10}},
+React.createElement(Btn,{onClick:function(){doDeleteOne(deleteModal.id);},style:{padding:“13px”,background:”#1a1a1a”,color:”#f0ebe3”,border:“1px solid “+C.border,fontSize:14,fontFamily:“inherit”,textAlign:“left”}},React.createElement(“div”,{style:{fontWeight:700}},“Just this appointment”),React.createElement(“div”,{style:{fontSize:11,color:”#888”,marginTop:2}},“Remove only this date, keep the rest”)),
+React.createElement(Btn,{onClick:function(){doDeleteSeries(deleteModal.seriesId);},style:{padding:“13px”,background:”#1a0000”,color:”#ff6b6b”,border:“1px solid “+C.red,fontSize:14,fontFamily:“inherit”,textAlign:“left”}},React.createElement(“div”,{style:{fontWeight:700}},“Entire series”),React.createElement(“div”,{style:{fontSize:11,color:”#aa4444”,marginTop:2}},“Remove all recurring appointments”)),
+React.createElement(Btn,{onClick:function(){setDeleteModal(null);},style:{padding:“11px”,background:“none”,color:”#888”,border:“1px solid “+C.border,fontSize:13,fontFamily:“inherit”}},“Cancel”)
+)
+)
+),
+React.createElement(“div”,{style:{marginBottom:16}},
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:24,letterSpacing:3,color:C.text}},“ESTEBAN’S “,React.createElement(“span”,{style:{color:C.red}},“DASHBOARD”)),
+React.createElement(“div”,{style:{fontSize:10,color:C.dim,letterSpacing:2}},“🔴 LIVE · SYNCS ACROSS ALL DEVICES”+(extending?” · extending series…”:””))
+),
+React.createElement(“div”,{style:{display:“grid”,gridTemplateColumns:“repeat(2,1fr)”,gap:8,marginBottom:18}},
+[{l:“Total Bookings”,v:bookings.length},{l:“Today”,v:todayN},{l:“Recurring Clients”,v:recN}].map(function(s){
+return React.createElement(“div”,{key:s.l,style:{background:C.card,border:“1px solid “+C.border,padding:“12px 14px”}},
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:30,color:C.red,lineHeight:1}},s.v),
+React.createElement(“div”,{style:{fontSize:10,color:”#888”,letterSpacing:1,textTransform:“uppercase”,marginTop:3}},s.l)
+);
+}),
+React.createElement(“div”,{style:{background:C.card,border:“1px solid “+C.border,padding:“12px 14px”,gridColumn:“span 2”}},
+React.createElement(“div”,{style:{display:“flex”,alignItems:“center”,justifyContent:“space-between”,marginBottom:6}},
+React.createElement(“div”,{style:{fontSize:10,color:”#888”,letterSpacing:1,textTransform:“uppercase”}},“Est. Week Revenue”),
+React.createElement(“div”,{style:{display:“flex”,alignItems:“center”,gap:6}},
+React.createElement(Btn,{onClick:function(){setWeekOffset(function(o){return o-1;});},style:{background:”#1a1a1a”,color:”#ccc”,border:“1px solid “+C.border,padding:“3px 10px”,fontSize:14,lineHeight:1}},”‹”),
+React.createElement(“span”,{style:{fontSize:10,color:isCurrentWeek?C.red:”#888”,fontWeight:700,minWidth:90,textAlign:“center”}},isCurrentWeek?“THIS WEEK”:weekOffset<0?Math.abs(weekOffset)+“W AGO”:”+”+weekOffset+“W”),
+React.createElement(Btn,{onClick:function(){setWeekOffset(function(o){return o+1;});},style:{background:”#1a1a1a”,color:”#ccc”,border:“1px solid “+C.border,padding:“3px 10px”,fontSize:14,lineHeight:1}},”›”)
+)
+),
+React.createElement(“div”,{style:{display:“flex”,alignItems:“flex-end”,justifyContent:“space-between”}},
+React.createElement(“div”,null,
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:36,color:C.red,lineHeight:1}},”$”+weekRev),
+React.createElement(“div”,{style:{fontSize:9,color:”#555”,marginTop:3}},weekLabel),
+weekGcalCount>0&&React.createElement(“div”,{style:{fontSize:9,color:”#7ab8ff”,marginTop:2}},weekAppBookings.length+” app + “+weekGcalCount+” gcal × $40”)
+),
+!isCurrentWeek&&React.createElement(Btn,{onClick:function(){setWeekOffset(0);},style:{background:“none”,color:C.red,border:“1px solid “+C.red,padding:“4px 10px”,fontSize:10,fontFamily:“inherit”}},“Today”)
+)
+)
+),
+bookings.length===0?React.createElement(“div”,{style:{textAlign:“center”,padding:“40px 20px”,border:“1px dashed “+C.border,color:”#666”}},
+React.createElement(“div”,{style:{fontSize:32,marginBottom:8}},“📅”),
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:18,letterSpacing:2,marginBottom:4}},“NO BOOKINGS YET”),
+React.createElement(“div”,{style:{fontSize:13}},“Share your link so clients can start booking!”)
+):React.createElement(“div”,null,
+upcoming.length>0&&React.createElement(“div”,null,
+React.createElement(“div”,{style:{fontSize:10,color:C.red,letterSpacing:2,fontWeight:700,marginBottom:8,textTransform:“uppercase”}},“Upcoming (”+upcoming.length+”)”),
+React.createElement(“div”,{style:{display:“flex”,flexDirection:“column”,gap:8,marginBottom:20}},upcoming.map(function(b){return renderBookingCard(b,deleting,deleteModal,confirmDelete);}))
+),
+past.length>0&&React.createElement(“div”,null,
+React.createElement(“div”,{style:{fontSize:10,color:”#555”,letterSpacing:2,fontWeight:700,marginBottom:8,textTransform:“uppercase”}},“Recent Past”),
+React.createElement(“div”,{style:{display:“flex”,flexDirection:“column”,gap:8,opacity:0.5}},past.map(function(b){return renderBookingCard(b,deleting,deleteModal,confirmDelete);}))
+)
+)
+);
 }
 
 function GCalEmbed(props){
-  var settings=props.settings;
-  var calId=extractCalendarId(settings.calUrl||"");
-  var vs=useState("week");var view=vs[0];var setView=vs[1];
-  if(!calId)return React.createElement("div",{style:{height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:C.bg,padding:32,textAlign:"center",gap:16}},
-    React.createElement("div",{style:{fontSize:36}},"🗓"),
-    React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:20,letterSpacing:2,color:C.text}},"NO CALENDAR CONNECTED"),
-    React.createElement("div",{style:{fontSize:13,color:C.dim,lineHeight:1.8,maxWidth:280}},"Add your Google Calendar iCal URL in ⚙️ Settings.")
-  );
-  var embedUrl="https://calendar.google.com/calendar/embed?src="+encodeURIComponent(calId)+"&mode="+view.toUpperCase()+"&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&bgcolor=%230c0c0c&color=%238B0000";
-  return React.createElement("div",{style:{height:"100%",display:"flex",flexDirection:"column",background:C.bg}},
-    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 16px",borderBottom:"1px solid "+C.border,flexShrink:0}},
-      React.createElement("div",null,
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:18,letterSpacing:2,color:C.text}},"MY ",React.createElement("span",{style:{color:C.red}},"GOOGLE CALENDAR")),
-        React.createElement("div",{style:{fontSize:9,color:C.dim,letterSpacing:1}},"🔒 OWNER ONLY")
-      ),
-      React.createElement("div",{style:{display:"flex",gap:6}},
-        ["day","week","month"].map(function(v){return React.createElement(Btn,{key:v,onClick:function(){setView(v);},style:{padding:"5px 10px",background:view===v?C.red:"#1a1a1a",color:view===v?"#fff":"#888",border:"1px solid "+(view===v?C.red:C.border),fontSize:10,fontFamily:"inherit",textTransform:"uppercase",letterSpacing:1}},v);})
-      )
-    ),
-    React.createElement("div",{style:{flex:1,overflow:"hidden"}},
-      React.createElement("iframe",{src:embedUrl,style:{width:"100%",height:"100%",border:"none",filter:"invert(0.9) hue-rotate(180deg) saturate(0.8)"},frameBorder:"0",scrolling:"no"})
-    )
-  );
+var settings=props.settings;
+var calId=extractCalendarId(settings.calUrl||””);
+var vs=useState(“week”);var view=vs[0];var setView=vs[1];
+if(!calId)return React.createElement(“div”,{style:{height:“100%”,display:“flex”,flexDirection:“column”,alignItems:“center”,justifyContent:“center”,background:C.bg,padding:32,textAlign:“center”,gap:16}},
+React.createElement(“div”,{style:{fontSize:36}},“🗓”),
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:20,letterSpacing:2,color:C.text}},“NO CALENDAR CONNECTED”),
+React.createElement(“div”,{style:{fontSize:13,color:C.dim,lineHeight:1.8,maxWidth:280}},“Add your Google Calendar iCal URL in ⚙️ Settings.”)
+);
+var embedUrl=“https://calendar.google.com/calendar/embed?src=”+encodeURIComponent(calId)+”&mode=”+view.toUpperCase()+”&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&showTz=0&bgcolor=%230c0c0c&color=%238B0000”;
+return React.createElement(“div”,{style:{height:“100%”,display:“flex”,flexDirection:“column”,background:C.bg}},
+React.createElement(“div”,{style:{display:“flex”,alignItems:“center”,justifyContent:“space-between”,padding:“10px 16px”,borderBottom:“1px solid “+C.border,flexShrink:0}},
+React.createElement(“div”,null,
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:18,letterSpacing:2,color:C.text}},“MY “,React.createElement(“span”,{style:{color:C.red}},“GOOGLE CALENDAR”)),
+React.createElement(“div”,{style:{fontSize:9,color:C.dim,letterSpacing:1}},“🔒 OWNER ONLY”)
+),
+React.createElement(“div”,{style:{display:“flex”,gap:6}},
+[“day”,“week”,“month”].map(function(v){return React.createElement(Btn,{key:v,onClick:function(){setView(v);},style:{padding:“5px 10px”,background:view===v?C.red:”#1a1a1a”,color:view===v?”#fff”:”#888”,border:“1px solid “+(view===v?C.red:C.border),fontSize:10,fontFamily:“inherit”,textTransform:“uppercase”,letterSpacing:1}},v);})
+)
+),
+React.createElement(“div”,{style:{flex:1,overflow:“hidden”}},
+React.createElement(“iframe”,{src:embedUrl,style:{width:“100%”,height:“100%”,border:“none”,filter:“invert(0.9) hue-rotate(180deg) saturate(0.8)”},frameBorder:“0”,scrolling:“no”})
+)
+);
 }
 
 function App(){
-  var ss=useState(DEF);var settings=ss[0];var setSettingsState=ss[1];
-  var bs=useState([]);var bookings=bs[0];var setBookings=bs[1];
-  var rs=useState(false);var ready=rs[0];var setReady=rs[1];
-  var des=useState(false);var dbErr=des[0];var setDbErr=des[1];
-  var ios=useLS("sp_owner",false);var isOwner=ios[0];var setIsOwner=ios[1];
-  var sps=useState(false);var showPin=sps[0];var setShowPin=sps[1];
-  var ovs=useState("dash");var ownerView=ovs[0];var setOwnerView=ovs[1];
-  function setSettings(s){setSettingsState(s);fbSaveSettings(s).catch(function(e){console.error(e);});}
-  useEffect(function(){
-    fbGetSettings().then(function(s){setSettingsState(s);setReady(true);}).catch(function(){setDbErr(true);});
-  },[]);
-  useEffect(function(){if(!ready)return;return fbListen(setBookings);},[ready]);
-  if(dbErr)return React.createElement("div",{style:{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:C.bg,padding:32,textAlign:"center",gap:16}},
-    React.createElement("div",{style:{fontSize:40}},"⚠️"),
-    React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:20,letterSpacing:2,color:"#ff6b6b"}},"DATABASE ERROR"),
-    React.createElement("div",{style:{fontSize:13,color:C.dim}},"Check Firebase console.")
-  );
-  if(!ready)return React.createElement("div",{style:{height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:C.bg,gap:16}},
-    React.createElement("div",{style:{fontSize:40}},"💈"),
-    React.createElement(Dots),
-    React.createElement("div",{style:{fontSize:13,color:C.dim}},"Connecting...")
-  );
-  if(showPin)return React.createElement(PinScreen,{onSuccess:function(){setIsOwner(true);setShowPin(false);setOwnerView("dash");},onCancel:function(){setShowPin(false);}});
-  if(isOwner)return React.createElement("div",{style:{width:"100%",height:"100vh",display:"flex",flexDirection:"column",background:C.bg,color:C.text}},
-    React.createElement("div",{style:{display:"flex",background:"#080808",borderBottom:"1px solid #1a1a1a",flexShrink:0}},
-      [{id:"book",label:"💈 Book"},{id:"dash",label:"📋 List"+(bookings.length?" ("+bookings.length+")":"")},{id:"cal",label:"📅 Cal"},{id:"gcal",label:"🗓 GCal"},{id:"settings",label:"⚙️"}].map(function(t){
-        return React.createElement("button",{key:t.id,onClick:function(){setOwnerView(t.id);},style:{flex:1,padding:"13px 2px",background:"none",border:"none",borderBottom:ownerView===t.id?"3px solid "+C.red:"3px solid transparent",color:ownerView===t.id?"#fff":"#888",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"'DM Sans',sans-serif",touchAction:"manipulation"}},t.label);
-      })
-    ),
-    React.createElement("div",{style:{flex:1,overflow:"hidden"}},
-      ownerView==="book"&&React.createElement(BookForm,{allBookings:bookings,settings:settings}),
-      ownerView==="dash"&&React.createElement(Dashboard,{bookings:bookings,settings:settings}),
-      ownerView==="cal"&&React.createElement(CalendarView,{bookings:bookings,settings:settings}),
-      ownerView==="gcal"&&React.createElement(GCalEmbed,{settings:settings}),
-      ownerView==="settings"&&React.createElement(Settings,{settings:settings,onSave:setSettings,onBack:function(){setOwnerView("dash");}})
-    ),
-    React.createElement("div",{style:{padding:"8px 16px",background:"#080808",borderTop:"1px solid #1a1a1a",display:"flex",justifyContent:"flex-end"}},
-      React.createElement(Btn,{onClick:function(){setIsOwner(false);},style:{background:"none",color:"#888",fontSize:12,padding:"4px 8px",fontFamily:"inherit"}},"🔓 Exit Owner Mode")
-    )
-  );
-  return React.createElement("div",{style:{width:"100%",height:"100vh",display:"flex",flexDirection:"column",background:C.bg,color:C.text}},
-    React.createElement("div",{style:{flex:1,overflow:"hidden"}},React.createElement(BookForm,{allBookings:bookings,settings:settings})),
-    React.createElement(OwnerTap,{onUnlock:function(){setShowPin(true);}})
-  );
+var ss=useState(DEF);var settings=ss[0];var setSettingsState=ss[1];
+var bs=useState([]);var bookings=bs[0];var setBookings=bs[1];
+var rs=useState(false);var ready=rs[0];var setReady=rs[1];
+var des=useState(false);var dbErr=des[0];var setDbErr=des[1];
+var ios=useLS(“sp_owner”,false);var isOwner=ios[0];var setIsOwner=ios[1];
+var sps=useState(false);var showPin=sps[0];var setShowPin=sps[1];
+var ovs=useState(“dash”);var ownerView=ovs[0];var setOwnerView=ovs[1];
+function setSettings(s){setSettingsState(s);fbSaveSettings(s).catch(function(e){console.error(e);});}
+useEffect(function(){
+fbGetSettings().then(function(s){setSettingsState(s);setReady(true);}).catch(function(){setDbErr(true);});
+},[]);
+useEffect(function(){if(!ready)return;return fbListen(setBookings);},[ready]);
+if(dbErr)return React.createElement(“div”,{style:{height:“100vh”,display:“flex”,flexDirection:“column”,alignItems:“center”,justifyContent:“center”,background:C.bg,padding:32,textAlign:“center”,gap:16}},
+React.createElement(“div”,{style:{fontSize:40}},“⚠️”),
+React.createElement(“div”,{style:{fontFamily:”‘Bebas Neue’,cursive”,fontSize:20,letterSpacing:2,color:”#ff6b6b”}},“DATABASE ERROR”),
+React.createElement(“div”,{style:{fontSize:13,color:C.dim}},“Check Firebase console.”)
+);
+if(!ready)return React.createElement(“div”,{style:{height:“100vh”,display:“flex”,flexDirection:“column”,alignItems:“center”,justifyContent:“center”,background:C.bg,gap:16}},
+React.createElement(“div”,{style:{fontSize:40}},“💈”),
+React.createElement(Dots),
+React.createElement(“div”,{style:{fontSize:13,color:C.dim}},“Connecting…”)
+);
+if(showPin)return React.createElement(PinScreen,{onSuccess:function(){setIsOwner(true);setShowPin(false);setOwnerView(“dash”);},onCancel:function(){setShowPin(false);}});
+if(isOwner)return React.createElement(“div”,{style:{width:“100%”,height:“100vh”,display:“flex”,flexDirection:“column”,background:C.bg,color:C.text}},
+React.createElement(“div”,{style:{display:“flex”,background:”#080808”,borderBottom:“1px solid #1a1a1a”,flexShrink:0}},
+[{id:“book”,label:“💈 Book”},{id:“dash”,label:“📋 List”+(bookings.length?” (”+bookings.length+”)”:””)},{id:“cal”,label:“📅 Cal”},{id:“gcal”,label:“🗓 GCal”},{id:“settings”,label:“⚙️”}].map(function(t){
+return React.createElement(“button”,{key:t.id,onClick:function(){setOwnerView(t.id);},style:{flex:1,padding:“13px 2px”,background:“none”,border:“none”,borderBottom:ownerView===t.id?“3px solid “+C.red:“3px solid transparent”,color:ownerView===t.id?”#fff”:”#888”,cursor:“pointer”,fontSize:11,fontWeight:700,fontFamily:”‘DM Sans’,sans-serif”,touchAction:“manipulation”}},t.label);
+})
+),
+React.createElement(“div”,{style:{flex:1,overflow:“hidden”}},
+ownerView===“book”&&React.createElement(BookForm,{allBookings:bookings,settings:settings}),
+ownerView===“dash”&&React.createElement(Dashboard,{bookings:bookings,settings:settings}),
+ownerView===“cal”&&React.createElement(CalendarView,{bookings:bookings,settings:settings}),
+ownerView===“gcal”&&React.createElement(GCalEmbed,{settings:settings}),
+ownerView===“settings”&&React.createElement(Settings,{settings:settings,onSave:setSettings,onBack:function(){setOwnerView(“dash”);}})
+),
+React.createElement(“div”,{style:{padding:“8px 16px”,background:”#080808”,borderTop:“1px solid #1a1a1a”,display:“flex”,justifyContent:“flex-end”}},
+React.createElement(Btn,{onClick:function(){setIsOwner(false);},style:{background:“none”,color:”#888”,fontSize:12,padding:“4px 8px”,fontFamily:“inherit”}},“🔓 Exit Owner Mode”)
+)
+);
+return React.createElement(“div”,{style:{width:“100%”,height:“100vh”,display:“flex”,flexDirection:“column”,background:C.bg,color:C.text}},
+React.createElement(“div”,{style:{flex:1,overflow:“hidden”}},React.createElement(BookForm,{allBookings:bookings,settings:settings})),
+React.createElement(OwnerTap,{onUnlock:function(){setShowPin(true);}})
+);
 }
 
 function OwnerTap(props){
-  var ts=useState(0);var taps=ts[0];var setTaps=ts[1];
-  function tap(){var next=taps+1;if(next>=5){setTaps(0);props.onUnlock();}else{setTaps(next);setTimeout(function(){setTaps(0);},2000);}}
-  return React.createElement("div",{onClick:tap,style:{height:28,background:"#080808",borderTop:"1px solid #0a0a0a",display:"flex",alignItems:"center",justifyContent:"center",cursor:"default",userSelect:"none"}},
-    React.createElement("div",{style:{fontSize:9,color:"#1a1a1a",letterSpacing:2}},"SHEAR PERFECTION")
-  );
+var ts=useState(0);var taps=ts[0];var setTaps=ts[1];
+function tap(){var next=taps+1;if(next>=5){setTaps(0);props.onUnlock();}else{setTaps(next);setTimeout(function(){setTaps(0);},2000);}}
+return React.createElement(“div”,{onClick:tap,style:{height:28,background:”#080808”,borderTop:“1px solid #0a0a0a”,display:“flex”,alignItems:“center”,justifyContent:“center”,cursor:“default”,userSelect:“none”}},
+React.createElement(“div”,{style:{fontSize:9,color:”#1a1a1a”,letterSpacing:2}},“SHEAR PERFECTION”)
+);
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+ReactDOM.createRoot(document.getElementById(“root”)).render(React.createElement(App));
 </script>
+
 </body>
 </html>
