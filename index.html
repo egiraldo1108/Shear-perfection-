@@ -673,23 +673,23 @@ function BookForm(props){
       React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:2,textTransform:"uppercase",marginBottom:12,textAlign:"center"}},"We Accept"),
       React.createElement("div",{style:{display:"flex",justifyContent:"center",gap:10,flexWrap:"wrap",alignItems:"center"}},
         React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
-          React.createElement("img",{src:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Cash_App_logo.svg/512px-Cash_App_logo.svg.png",style:{width:36,height:36,objectFit:"contain"},alt:"Cash App"}),
+          React.createElement("div",{style:{width:36,height:36,background:"#00D632",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}},"$"),
           React.createElement("span",{style:{fontSize:9,color:"#888"}},"Cash App")
         ),
         React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
-          React.createElement("img",{src:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Venmo_logo.png/320px-Venmo_logo.png",style:{width:52,height:36,objectFit:"contain"},alt:"Venmo"}),
+          React.createElement("div",{style:{width:36,height:36,background:"#008CFF",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:13}},"V"),
           React.createElement("span",{style:{fontSize:9,color:"#888"}},"Venmo")
         ),
         React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
-          React.createElement("img",{src:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Zelle_logo.svg/320px-Zelle_logo.svg.png",style:{width:48,height:36,objectFit:"contain"},alt:"Zelle"}),
+          React.createElement("div",{style:{width:36,height:36,background:"#6B39A8",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:13}},"Z"),
           React.createElement("span",{style:{fontSize:9,color:"#888"}},"Zelle")
         ),
         React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
-          React.createElement("img",{src:"https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Apple_Pay_logo.svg/320px-Apple_Pay_logo.svg.png",style:{width:52,height:36,objectFit:"contain"},alt:"Apple Pay"}),
+          React.createElement("div",{style:{width:36,height:36,background:"#000",border:"1px solid #444",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:10}},"Pay"),
           React.createElement("span",{style:{fontSize:9,color:"#888"}},"Apple Pay")
         ),
         React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
-          React.createElement("div",{style:{width:36,height:36,background:"#2a2a2a",border:"1px solid #444",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}},"💵"),
+          React.createElement("div",{style:{width:36,height:36,background:"#2a2a2a",border:"1px solid #444",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}},"💵"),
           React.createElement("span",{style:{fontSize:9,color:"#888"}},"Cash")
         )
       )
@@ -756,10 +756,11 @@ function BookForm(props){
       )
     )
   );
-  return React.createElement("div",{style:{height:"100%",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:28,gap:18,background:C.bg,textAlign:"center"}},
+  return React.createElement("div",{style:{height:"100%",overflowY:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 28px 40px",gap:18,background:C.bg,textAlign:"center"}},
     React.createElement("div",{style:{fontSize:56}},"✅"),
     React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:28,letterSpacing:3,color:C.green}},"YOU'RE BOOKED!"),
     React.createElement("div",{style:{fontSize:13,color:"#bbb"}},"Esteban will see you at Shear Perfection 💈"),
+    React.createElement("div",{style:{fontSize:13,color:"#aaa",textAlign:"center",marginBottom:-8}},"Your booking with Esteban is for:"),
     React.createElement("div",{style:{background:"#111",border:"1px solid "+C.border,padding:18,width:"100%",maxWidth:360,textAlign:"left"}},
       [["Service",last?last.service:""],["Date",last?last.date:""],["Time",fmt12(last?last.time:"")],["Duration",svc?svc.duration+" min":""],["Price",last?"$"+last.price:""],["Recurring",last?last.recurring:""]].map(function(kv){
         return React.createElement("div",{key:kv[0],style:{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #1a1a1a",fontSize:13}},
@@ -772,23 +773,23 @@ function BookForm(props){
       React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:2,textTransform:"uppercase",marginBottom:10,textAlign:"center"}},"Pay Esteban"),
       React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:8}},
         React.createElement("a",{href:"https://cash.app/$egiraldo1000",target:"_blank",style:{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:"#0a1a0a",border:"1px solid #1a3a1a",textDecoration:"none"}},
-          React.createElement("img",{src:"https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Cash_App_logo.svg/512px-Cash_App_logo.svg.png",style:{width:28,height:28,objectFit:"contain"},alt:"Cash App"}),
+          React.createElement("div",{style:{width:28,height:28,background:"#00D632",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:14,flexShrink:0}},"$"),
           React.createElement("div",null,
-            React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#00D632"}}),"Cash App"),
+            React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#00D632"}},"Cash App"),
           React.createElement("div",{style:{fontSize:12,color:"#aaa",marginLeft:"auto"}},"$egiraldo1000 →")
         ),
         React.createElement("a",{href:"https://venmo.com/u/egiraldo1000",target:"_blank",style:{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:"#0a0f1a",border:"1px solid #1a2a4a",textDecoration:"none"}},
-          React.createElement("img",{src:"https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Venmo_logo.png/320px-Venmo_logo.png",style:{width:40,height:28,objectFit:"contain"},alt:"Venmo"}),
+          React.createElement("div",{style:{width:28,height:28,background:"#008CFF",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:13,flexShrink:0}},"V"),
           React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#008CFF"}},"Venmo"),
           React.createElement("div",{style:{fontSize:12,color:"#aaa",marginLeft:"auto"}},"@egiraldo1000 →")
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:"#0f0a1a",border:"1px solid #2a1a4a"}},
-          React.createElement("img",{src:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/Zelle_logo.svg/320px-Zelle_logo.svg.png",style:{width:36,height:28,objectFit:"contain"},alt:"Zelle"}),
+          React.createElement("div",{style:{width:28,height:28,background:"#6B39A8",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:13,flexShrink:0}},"Z"),
           React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#9B59B6"}},"Zelle"),
           React.createElement("div",{style:{fontSize:12,color:"#aaa",marginLeft:"auto"}},"Use my phone #")
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:"#0a0a0a",border:"1px solid #2a2a2a"}},
-          React.createElement("img",{src:"https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Apple_Pay_logo.svg/320px-Apple_Pay_logo.svg.png",style:{width:40,height:28,objectFit:"contain"},alt:"Apple Pay"}),
+          React.createElement("div",{style:{width:28,height:28,background:"#000",border:"1px solid #444",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:9,flexShrink:0}},"Pay"),
           React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#f0ebe3"}},"Apple Pay"),
           React.createElement("div",{style:{fontSize:12,color:"#aaa",marginLeft:"auto"}},"In person")
         ),
