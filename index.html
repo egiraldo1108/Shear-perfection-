@@ -707,7 +707,7 @@ function BookForm(props){
           price:item.svc.price,
           date:date,
           time:bTime,
-          groupId:bookingList.length>1?groupId:undefined,
+          groupId:bookingList.length>1?groupId:null,
           at:new Date().toISOString()
         });
         return fbSave(b).then(function(){savedBookings.push(b);});
