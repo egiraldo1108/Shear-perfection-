@@ -27,6 +27,8 @@
 <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script>emailjs.init("bFwwtxiU1oTwwIXlC");</script>
 <script src="https://unpkg.com/@babel/standalone@7.23.2/babel.min.js"></script>
 <script type="text/babel">
 var _useState=React.useState,_useEffect=React.useEffect,_useCallback=React.useCallback,_useMemo=React.useMemo;
@@ -65,7 +67,7 @@ var PERSONAL_BLOCKS=[
 ];
 
 function mkDefaultDayHours(){var h={};for(var i=0;i<7;i++)h[i]={open:i!==0,start:9,end:19};return h;}
-var DEF={dayHours:mkDefaultDayHours(),calUrl:"",ntfyTopic:"",excludeBlocks:true};
+var DEF={dayHours:mkDefaultDayHours(),calUrl:"",ntfyTopic:"",excludeBlocks:true,emailReminders:false};
 
 function fbGetSettings(){
   return db.collection("_config").doc("settings").get().then(function(d){
@@ -111,6 +113,45 @@ function fetchGCal(url){
 function sendNotif(topic,title,message){
   if(!topic)return;
   fetch("https://ntfy.sh/"+topic,{method:"POST",body:title+": "+message}).catch(function(e){console.error("Notif failed",e);});
+}
+
+function sendConfirmationEmail(email,name,b,svc){
+  if(!email)return;
+  var dp=b.date.split("-");var y=parseInt(dp[0]);var mo=parseInt(dp[1]);var d=parseInt(dp[2]);
+  var dispDate=new Date(y,mo-1,d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+  emailjs.send("service_yqrzd6v","template_wddlhvy",{
+    client_name:name,
+    client_email:email,
+    service:b.service,
+    date:dispDate,
+    time:fmt12(b.time),
+    duration:svc?svc.duration:30,
+    price:b.price,
+    recurring:b.recurring||"One-time"
+  }).catch(function(e){console.error("Email failed",e);});
+}
+
+function scheduleReminderEmail(email,name,b,svc){
+  if(!email)return;
+  var dp=b.date.split("-");var y=parseInt(dp[0]);var mo=parseInt(dp[1]);var d=parseInt(dp[2]);
+  var apptTime=new Date(y,mo-1,d,parseInt(b.time.split(":")[0]),parseInt(b.time.split(":")[1]));
+  var reminderTime=new Date(apptTime.getTime()-24*60*60*1000);
+  var now=new Date();
+  var delay=reminderTime.getTime()-now.getTime();
+  if(delay<0)return;
+  var dispDate=new Date(y,mo-1,d).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+  setTimeout(function(){
+    emailjs.send("service_yqrzd6v","template_wddlhvy",{
+      client_name:name,
+      client_email:email,
+      service:b.service,
+      date:dispDate,
+      time:fmt12(b.time),
+      duration:svc?svc.duration:30,
+      price:b.price,
+      recurring:b.recurring||"One-time"
+    }).catch(function(e){console.error("Reminder email failed",e);});
+  },delay);
 }
 
 function uid(){return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);}
@@ -581,7 +622,7 @@ function BookForm(props){
   var svs=useState(null);var svc=svs[0];var setSvc=svs[1];
   var dts=useState("");var date=dts[0];var setDate=dts[1];
   var tms=useState("");var time=tms[0];var setTime=tms[1];
-  var fms=useState({name:"",phone:"",notes:"",recurring:"One-time"});var form=fms[0];var setForm=fms[1];
+  var fms=useState({name:"",phone:"",email:"",emailReminder:false,notes:"",recurring:"One-time"});var form=fms[0];var setForm=fms[1];
   var ers=useState({});var errors=ers[0];var setErrors=ers[1];
   var sls=useState([]);var slots=sls[0];var setSlots=sls[1];
   var lds=useState(false);var loading=lds[0];var setLoading=lds[1];
@@ -640,6 +681,10 @@ function BookForm(props){
         var dispDate=new Date(date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
         sendNotif(settings.ntfyTopic,"💈 New Booking!",b.name+" · "+svc.name+"\n"+dispDate+" at "+fmt12(time)+(isRecurring?" ("+form.recurring+")":"")+"\n"+b.phone);
       }
+      if(form.email){
+        sendConfirmationEmail(form.email,form.name,b,svc);
+        if(form.emailReminder)scheduleReminderEmail(form.email,form.name,b,svc);
+      }
       setSaving(false);setStep(3);
     }).catch(function(e){
       setSaving(false);
@@ -647,7 +692,7 @@ function BookForm(props){
       else alert("Couldn't save — check connection.");
     });
   }
-  function reset(){setSvc(null);setDate("");setTime("");setForm({name:"",phone:"",notes:"",recurring:"One-time"});setStep(0);}
+  function reset(){setSvc(null);setDate("");setTime("");setForm({name:"",phone:"",email:"",emailReminder:false,notes:"",recurring:"One-time"});setStep(0);}
   if(step===0)return React.createElement("div",{style:{height:"100%",overflowY:"auto",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",padding:24,gap:20}},
     React.createElement("div",{style:{textAlign:"center",paddingTop:8}},
       React.createElement("div",{style:{fontSize:46,marginBottom:10}},"💈"),
@@ -743,6 +788,17 @@ function BookForm(props){
     React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:20}},
       React.createElement("div",null,React.createElement(Lbl,{text:"Your Name",err:errors.name}),React.createElement("input",{style:IS(),value:form.name,onChange:function(e){setF("name",e.target.value);},placeholder:"First name",autoCapitalize:"words"})),
       React.createElement("div",null,React.createElement(Lbl,{text:"Phone Number",err:errors.phone}),React.createElement("input",{style:IS(),value:form.phone,onChange:function(e){setF("phone",e.target.value);},placeholder:"(401) 555-0000",type:"tel"})),
+      React.createElement("div",null,
+        React.createElement(Lbl,{text:"Email (optional)",sub:"For booking confirmation & reminders"}),
+        React.createElement("input",{style:IS(),value:form.email||"",onChange:function(e){setF("email",e.target.value);},placeholder:"your@email.com",type:"email",autoCapitalize:"none",autoCorrect:"off"}),
+        (form.email)&&React.createElement("div",{style:{marginTop:8,display:"flex",alignItems:"center",justifyContent:"space-between",background:"#1a1a1a",border:"1px solid #222",padding:"10px 14px"}},
+          React.createElement("div",null,
+            React.createElement("div",{style:{fontSize:13,color:"#f0ebe3"}},"24hr reminder email"),
+            React.createElement("div",{style:{fontSize:11,color:"#666",marginTop:2}},"We'll remind you the day before")
+          ),
+          React.createElement(Btn,{onClick:function(){setF("emailReminder",!form.emailReminder);},style:{padding:"5px 14px",background:form.emailReminder?C.red:"#2a2a2a",color:form.emailReminder?"#fff":"#888",border:"1px solid "+(form.emailReminder?C.red:"#333"),fontSize:12,fontFamily:"inherit"}},form.emailReminder?"ON":"OFF")
+        )
+      ),
       React.createElement("div",null,
         React.createElement(Lbl,{text:"Appointment Type"}),
         React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginTop:4}},
