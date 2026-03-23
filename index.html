@@ -619,7 +619,8 @@ function Settings(props){
 function BookForm(props){
   var allBookings=props.allBookings;var settings=props.settings;
   var ss=useState(0);var step=ss[0];var setStep=ss[1];
-  var svs=useState(null);var svc=svs[0];var setSvc=svs[1];
+  // cart: {serviceName: qty}
+  var cs=useState({});var cart=cs[0];var setCart=cs[1];
   var dts=useState("");var date=dts[0];var setDate=dts[1];
   var tms=useState("");var time=tms[0];var setTime=tms[1];
   var fms=useState({name:"",phone:"",email:"",emailReminder:false,notes:"",recurring:"One-time"});var form=fms[0];var setForm=fms[1];
@@ -632,58 +633,97 @@ function BookForm(props){
   var svgs=useState(false);var saving=svgs[0];var setSaving=svgs[1];
   var lss=useState(null);var last=lss[0];var setLast=lss[1];
   function setF(k,v){setForm(function(f){var n=Object.assign({},f);n[k]=v;return n;});}
-  var svcName=svc?svc.name:null;
+
+  // Cart helpers
+  var cartItems=SERVICES.filter(function(s){return cart[s.name]&&cart[s.name]>0;});
+  var totalDuration=cartItems.reduce(function(sum,s){return sum+(s.duration*(cart[s.name]||0));},0);
+  var totalPrice=cartItems.reduce(function(sum,s){return sum+(s.price*(cart[s.name]||0));},0);
+  var totalCount=cartItems.reduce(function(sum,s){return sum+(cart[s.name]||0);},0);
+
+  function setQty(name,delta){
+    setCart(function(c){
+      var n=Object.assign({},c);
+      n[name]=Math.max(0,(n[name]||0)+delta);
+      if(n[name]===0)delete n[name];
+      return n;
+    });
+  }
+
+  // Generate slots for total duration
   useEffect(function(){
-    if(!date||!svcName)return;
+    if(!date||totalDuration===0)return;
     setSlots([]);setTime("");setLoading(true);setCalWarn(false);
-    var sv=SERVICES.find(function(s){return s.name===svcName;});
-    if(!sv)return;
-    var dur=sv.duration;
     if(settings.calUrl){
       fetchGCal(settings.calUrl).then(function(r){
         var ce=r||[];if(r===null)setCalWarn(true);
-        setSlots(genSlots(date,dur,ce,allBookings,settings));
+        setSlots(genSlots(date,totalDuration,ce,allBookings,settings));
         setLoading(false);
       });
     } else {
-      setSlots(genSlots(date,dur,[],allBookings,settings));
+      setSlots(genSlots(date,totalDuration,[],allBookings,settings));
       setLoading(false);
     }
-  },[date,svcName]);
+  },[date,totalDuration]);
+
   useEffect(function(){
-    if(!svcName)return;
+    if(totalDuration===0)return;
     setNextAvail(null);setSearchingNext(true);
-    var sv=SERVICES.find(function(s){return s.name===svcName;});
-    if(!sv){setSearchingNext(false);return;}
-    var dur=sv.duration;
     var today=new Date();
     function checkDays(ce,d){
       if(d>=14){setSearchingNext(false);return;}
       var dt=new Date(today);dt.setDate(today.getDate()+d);
       var ds=dt.toISOString().split("T")[0];
-      var s=genSlots(ds,dur,ce,allBookings,settings);
+      var s=genSlots(ds,totalDuration,ce,allBookings,settings);
       if(s.length>0){setNextAvail({date:ds,time:s[0]});setSearchingNext(false);}
       else checkDays(ce,d+1);
     }
     if(settings.calUrl){
       fetchGCal(settings.calUrl).then(function(r){checkDays(r&&r.length?r:[],0);});
     } else {checkDays([],0);}
-  },[svcName]);
+  },[totalDuration]);
+
   function validate(){var e={};if(!form.name.trim())e.name="Required";if(!form.phone.trim())e.phone="Required";setErrors(e);return!Object.keys(e).length;}
+
   function submit(){
     if(!validate())return;setSaving(true);
-    var b=Object.assign({},form,{service:svc.name,price:svc.price,date:date,time:time,at:new Date().toISOString()});
-    var isRecurring=form.recurring&&form.recurring!=="One-time";
-    var p=isRecurring?fbSaveSeries(b):fbSave(b);
-    p.then(function(){
-      setLast(b);
+    var groupId=uid();
+    var parts=time.split(":");var startH=parseInt(parts[0]);var startM=parseInt(parts[1]);
+    var curMin=startH*60+startM;
+    // Build list of individual bookings (expand qty)
+    var bookingList=[];
+    cartItems.forEach(function(svc){
+      for(var q=0;q<(cart[svc.name]||0);q++){
+        bookingList.push({svc:svc,startMin:curMin});
+        curMin+=svc.duration;
+      }
+    });
+    var chain=Promise.resolve();
+    var savedBookings=[];
+    bookingList.forEach(function(item){
+      chain=chain.then(function(){
+        var bTime=String(Math.floor(item.startMin/60)).padStart(2,"0")+":"+String(item.startMin%60).padStart(2,"0");
+        var b=Object.assign({},form,{
+          service:item.svc.name,
+          price:item.svc.price,
+          date:date,
+          time:bTime,
+          groupId:bookingList.length>1?groupId:undefined,
+          at:new Date().toISOString()
+        });
+        return fbSave(b).then(function(){savedBookings.push(b);});
+      });
+    });
+    chain.then(function(){
+      var firstB=savedBookings[0];
+      setLast({bookings:savedBookings,totalPrice:totalPrice,totalDuration:totalDuration,startTime:time,date:date,name:form.name});
       if(settings.ntfyTopic){
         var dispDate=new Date(date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
-        sendNotif(settings.ntfyTopic,"💈 New Booking!",b.name+" · "+svc.name+"\n"+dispDate+" at "+fmt12(time)+(isRecurring?" ("+form.recurring+")":"")+"\n"+b.phone);
+        var serviceNames=cartItems.map(function(s){return (cart[s.name]>1?cart[s.name]+"x ":"")+s.name;}).join(", ");
+        sendNotif(settings.ntfyTopic,"💈 New Booking!",form.name+" · "+serviceNames+"\n"+dispDate+" at "+fmt12(time)+"\n"+form.phone);
       }
-      if(form.email){
-        sendConfirmationEmail(form.email,form.name,b,svc);
-        if(form.emailReminder)scheduleReminderEmail(form.email,form.name,b,svc);
+      if(form.email&&firstB){
+        sendConfirmationEmail(form.email,form.name,firstB,cartItems[0]);
+        if(form.emailReminder)scheduleReminderEmail(form.email,form.name,firstB,cartItems[0]);
       }
       setSaving(false);setStep(3);
     }).catch(function(e){
@@ -692,7 +732,10 @@ function BookForm(props){
       else alert("Couldn't save — check connection.");
     });
   }
-  function reset(){setSvc(null);setDate("");setTime("");setForm({name:"",phone:"",email:"",emailReminder:false,notes:"",recurring:"One-time"});setStep(0);}
+
+  function reset(){setCart({});setDate("");setTime("");setForm({name:"",phone:"",email:"",emailReminder:false,notes:"",recurring:"One-time"});setStep(0);}
+
+  // STEP 0: Service selection with qty
   if(step===0)return React.createElement("div",{style:{height:"100%",overflowY:"auto",background:C.bg,display:"flex",flexDirection:"column",alignItems:"center",padding:24,gap:20}},
     React.createElement("div",{style:{textAlign:"center",paddingTop:8}},
       React.createElement("div",{style:{fontSize:46,marginBottom:10}},"💈"),
@@ -700,54 +743,69 @@ function BookForm(props){
       React.createElement("div",{style:{fontSize:12,color:C.red,letterSpacing:2}},"BOOK WITH ESTEBAN • 24/7")
     ),
     React.createElement("div",{style:{width:"100%",maxWidth:420,background:"#111",border:"1px solid #1e1e1e"}},
-      React.createElement("div",{style:{padding:"10px 16px",background:C.red,fontFamily:"'Bebas Neue',cursive",fontSize:14,letterSpacing:2}},"TAP A SERVICE TO BOOK"),
+      React.createElement("div",{style:{padding:"10px 16px",background:C.red,fontFamily:"'Bebas Neue',cursive",fontSize:14,letterSpacing:2}},"SELECT SERVICES"),
       SERVICES.map(function(s){
-        return React.createElement("div",{key:s.name,onClick:function(){setSvc(s);setStep(1);},style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 16px",borderBottom:"1px solid #1a1a1a",cursor:"pointer",touchAction:"manipulation"}},
-          React.createElement("div",null,
-            React.createElement("div",{style:{color:"#f0ebe3",fontSize:14,fontWeight:600}},s.name),
-            React.createElement("div",{style:{color:"#888",fontSize:11,marginTop:2}},"⏱ "+s.duration+" min")
+        var qty=cart[s.name]||0;
+        return React.createElement("div",{key:s.name,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:"1px solid #1a1a1a",background:qty>0?"#1a0a0a":"transparent"}},
+          React.createElement("div",{style:{flex:1}},
+            React.createElement("div",{style:{color:qty>0?"#f0ebe3":"#c8bfb4",fontSize:14,fontWeight:qty>0?700:400}},s.name),
+            React.createElement("div",{style:{color:"#666",fontSize:11,marginTop:2}},"⏱ "+s.duration+" min")
           ),
-          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
-            React.createElement("span",{style:{color:"#fff",fontWeight:700,fontSize:15}},"$"+s.price),
-            React.createElement("span",{style:{color:C.red,fontSize:18}},"›")
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            React.createElement("span",{style:{color:"#888",fontSize:13,minWidth:24,textAlign:"right"}},"$"+s.price),
+            qty>0?React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+              React.createElement("button",{onClick:function(){setQty(s.name,-1);},style:{width:28,height:28,background:"#2a1a1a",border:"1px solid "+C.red,color:C.red,fontSize:18,cursor:"pointer",fontFamily:"inherit",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}},"-"),
+              React.createElement("span",{style:{color:"#fff",fontWeight:700,fontSize:15,minWidth:16,textAlign:"center"}},qty),
+              React.createElement("button",{onClick:function(){setQty(s.name,1);},style:{width:28,height:28,background:"#1a2a1a",border:"1px solid "+C.green,color:C.green,fontSize:18,cursor:"pointer",fontFamily:"inherit",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}},"+")
+            ):React.createElement("button",{onClick:function(){setQty(s.name,1);},style:{width:28,height:28,background:"#1a1a1a",border:"1px solid #333",color:"#888",fontSize:18,cursor:"pointer",fontFamily:"inherit",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}},"+")
           )
         );
       })
     ),
-    React.createElement("div",{style:{width:"100%",maxWidth:420,background:"#111",border:"1px solid #222",padding:"14px"}},
-      React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:2,textTransform:"uppercase",marginBottom:12,textAlign:"center"}},"We Accept"),
-      React.createElement("div",{style:{display:"flex",justifyContent:"center",gap:10,flexWrap:"wrap",alignItems:"center"}},
-        React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
-          React.createElement("div",{style:{width:36,height:36,background:"#00D632",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}},"$"),
-          React.createElement("span",{style:{fontSize:9,color:"#888"}},"Cash App")
-        ),
-        React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
-          React.createElement("div",{style:{width:36,height:36,background:"#008CFF",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:13}},"V"),
-          React.createElement("span",{style:{fontSize:9,color:"#888"}},"Venmo")
-        ),
-        React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
-          React.createElement("div",{style:{width:36,height:36,background:"#6B39A8",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:13}},"Z"),
-          React.createElement("span",{style:{fontSize:9,color:"#888"}},"Zelle")
-        ),
-        React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
-          React.createElement("div",{style:{width:36,height:36,background:"#000",border:"1px solid #444",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:10}},"Pay"),
-          React.createElement("span",{style:{fontSize:9,color:"#888"}},"Apple Pay")
-        ),
-        React.createElement("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},
-          React.createElement("div",{style:{width:36,height:36,background:"#2a2a2a",border:"1px solid #444",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}},"💵"),
-          React.createElement("span",{style:{fontSize:9,color:"#888"}},"Cash")
-        )
+    totalCount>0&&React.createElement("div",{style:{width:"100%",maxWidth:420,background:"#161616",border:"1px solid "+C.red,padding:"14px 16px"}},
+      React.createElement("div",{style:{fontSize:11,color:C.red,letterSpacing:2,fontWeight:700,marginBottom:10}},"YOUR BOOKING"),
+      cartItems.map(function(s){
+        return React.createElement("div",{key:s.name,style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"#ccc",paddingBottom:4}},
+          React.createElement("span",null,(cart[s.name]>1?cart[s.name]+"× ":"")+s.name),
+          React.createElement("span",{style:{color:"#f0ebe3",fontWeight:600}},"$"+(s.price*cart[s.name]))
+        );
+      }),
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginTop:8,paddingTop:8,borderTop:"1px solid #2a1a1a"}}),
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"#888",marginBottom:4}},
+        React.createElement("span",null,"Total time"),
+        React.createElement("span",null,totalDuration+" min")
+      ),
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:15,fontWeight:700,color:"#f0ebe3",marginBottom:12}},
+        React.createElement("span",null,"Total"),
+        React.createElement("span",{style:{color:C.red,fontFamily:"'Bebas Neue',cursive",fontSize:20}},"$"+totalPrice)
+      ),
+      React.createElement("button",{onClick:function(){setStep(1);},style:{width:"100%",padding:"14px",background:C.red,color:"#fff",fontFamily:"'Bebas Neue',cursive",fontSize:20,letterSpacing:2,border:"none",cursor:"pointer"}},"PICK A TIME →")
+    ),
+    React.createElement("div",{style:{width:"100%",maxWidth:420,background:"#111",border:"1px solid #2a2a2a",padding:"12px 16px"}},
+      React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:2,textTransform:"uppercase",marginBottom:8,textAlign:"center"}},"We Accept"),
+      React.createElement("div",{style:{display:"flex",justifyContent:"center",gap:8,flexWrap:"wrap"}},
+        [
+          React.createElement("div",{key:"ca",style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},React.createElement("div",{style:{width:36,height:36,background:"#00D632",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:18}},"$"),React.createElement("span",{style:{fontSize:9,color:"#888"}},"Cash App")),
+          React.createElement("div",{key:"vm",style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},React.createElement("div",{style:{width:36,height:36,background:"#008CFF",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:13}},"V"),React.createElement("span",{style:{fontSize:9,color:"#888"}},"Venmo")),
+          React.createElement("div",{key:"zl",style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},React.createElement("div",{style:{width:36,height:36,background:"#6B39A8",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:900,fontSize:13}},"Z"),React.createElement("span",{style:{fontSize:9,color:"#888"}},"Zelle")),
+          React.createElement("div",{key:"ap",style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},React.createElement("div",{style:{width:36,height:36,background:"#000",border:"1px solid #444",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:10}},"Pay"),React.createElement("span",{style:{fontSize:9,color:"#888"}},"Apple Pay")),
+          React.createElement("div",{key:"cs",style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4}},React.createElement("div",{style:{width:36,height:36,background:"#2a2a2a",border:"1px solid #444",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}},"💵"),React.createElement("span",{style:{fontSize:9,color:"#888"}},"Cash"))
+        ]
       )
     )
   );
+
+  // STEP 1: Date/time
   if(step===1)return React.createElement("div",{style:{height:"100%",overflowY:"auto",background:C.bg,padding:"20px 20px 40px"}},
-    React.createElement("div",{style:{background:C.red,padding:"14px 16px",marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center"}},
+    React.createElement("div",{style:{background:C.red,padding:"14px 16px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}},
       React.createElement("div",null,
-        React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.7)",letterSpacing:1}},"SELECTED"),
-        React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:18,color:"#fff"}},svc.name),
-        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.8)",marginTop:2}},"⏱ "+svc.duration+" min")
+        React.createElement("div",{style:{fontSize:11,color:"rgba(255,255,255,0.7)",letterSpacing:1}},"BOOKING"),
+        React.createElement("div",{style:{fontSize:13,color:"#fff",marginTop:2}},
+          cartItems.map(function(s){return(cart[s.name]>1?cart[s.name]+"× ":"")+s.name;}).join(" + ")
+        ),
+        React.createElement("div",{style:{fontSize:12,color:"rgba(255,255,255,0.8)",marginTop:2}},"⏱ "+totalDuration+" min total")
       ),
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:28,color:"#fff"}},"$"+svc.price)
+      React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:28,color:"#fff"}},"$"+totalPrice)
     ),
     (searchingNext||nextAvail)&&React.createElement("div",{style:{marginBottom:16,background:"#0a1a0a",border:"1px solid #2a4a2a",padding:"12px 14px"}},
       searchingNext?React.createElement("div",{style:{fontSize:12,color:"#4a8a4a"}},"🔍 Finding next available slot..."):
@@ -756,7 +814,7 @@ function BookForm(props){
           React.createElement("div",{style:{fontSize:10,color:"#4a8a4a",letterSpacing:2,fontWeight:700,marginBottom:2}},"NEXT AVAILABLE"),
           React.createElement("div",{style:{fontSize:14,color:"#f0ebe3",fontWeight:700}},new Date(nextAvail.date+"T12:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})+" · "+fmt12(nextAvail.time))
         ),
-        React.createElement(Btn,{onClick:function(){setDate(nextAvail.date);setTime(nextAvail.time);},style:{background:C.red,color:"#fff",padding:"9px 16px",fontSize:13,fontFamily:"'Bebas Neue',cursive",letterSpacing:1,flexShrink:0}},"BOOK IT")
+        React.createElement("button",{onClick:function(){setDate(nextAvail.date);setTime(nextAvail.time);},style:{background:C.red,color:"#fff",padding:"9px 16px",fontSize:13,fontFamily:"'Bebas Neue',cursive",letterSpacing:1,flexShrink:0,border:"none",cursor:"pointer"}},"BOOK IT")
       )
     ),
     React.createElement("div",{style:{marginBottom:24}},
@@ -764,10 +822,10 @@ function BookForm(props){
       React.createElement("input",{type:"date",min:todayStr(),value:date,onChange:function(e){setDate(e.target.value);},style:IS({colorScheme:"dark"})})
     ),
     date&&React.createElement("div",{style:{marginBottom:28}},
-      React.createElement(Lbl,{text:"Available Times",sub:svc.duration+" min slots"}),
-      calWarn&&React.createElement("div",{style:{padding:"10px 14px",background:"#1a1000",border:"1px solid #8B6000",fontSize:12,color:"#f0c060",marginBottom:12}},"⚠️ Calendar temporarily unavailable — showing estimated open slots."),
+      React.createElement(Lbl,{text:"Available Start Times",sub:"Block of "+totalDuration+" min — all services back to back"}),
+      calWarn&&React.createElement("div",{style:{padding:"10px 14px",background:"#1a1000",border:"1px solid #8B6000",fontSize:12,color:"#f0c060",marginBottom:12}},"⚠️ Calendar temporarily unavailable — showing estimated slots."),
       loading?React.createElement("div",{style:{padding:24,textAlign:"center"}},React.createElement(Dots),React.createElement("div",{style:{fontSize:13,color:C.dim,marginTop:10}},"Checking availability...")):
-      slots.length===0?React.createElement("div",{style:{padding:20,textAlign:"center",color:"#888",fontSize:13,border:"1px dashed "+C.border}},"No open slots — try another date."):
+      slots.length===0?React.createElement("div",{style:{padding:20,textAlign:"center",color:"#888",fontSize:13,border:"1px dashed "+C.border}},"No open slots for "+totalDuration+" min — try another date."):
       React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}},
         slots.map(function(s){return React.createElement(Btn,{key:s,onClick:function(){setTime(s);},style:{padding:"12px 6px",background:time===s?C.red:"#1a1a1a",color:time===s?"#fff":"#ddd",border:"1px solid "+(time===s?C.red:C.border),fontSize:14,fontWeight:700}},fmt12(s));})
       )
@@ -777,13 +835,18 @@ function BookForm(props){
       React.createElement(Btn,{onClick:function(){if(date&&time)setStep(2);},disabled:!date||!time,style:{flex:2,padding:"14px",background:date&&time?C.red:"#2a1a1a",color:date&&time?"#fff":"#555",fontFamily:"'Bebas Neue',cursive",fontSize:20,letterSpacing:2}},"NEXT →")
     )
   );
+
+  // STEP 2: Contact info
   if(step===2)return React.createElement("div",{style:{height:"100%",overflowY:"auto",background:C.bg,padding:"20px 20px 40px"}},
-    React.createElement("div",{style:{background:"#111",border:"1px solid "+C.border,padding:"12px 16px",marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center"}},
-      React.createElement("div",null,
-        React.createElement("div",{style:{fontSize:13,color:"#ccc"}},svc.name),
-        React.createElement("div",{style:{fontSize:13,color:"#aaa",marginTop:2}},"📅 "+date+" · 🕐 "+fmt12(time))
-      ),
-      React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:24,color:C.red}},"$"+svc.price)
+    React.createElement("div",{style:{background:"#111",border:"1px solid "+C.border,padding:"12px 16px",marginBottom:24}},
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:12,color:"#aaa"}},cartItems.map(function(s){return(cart[s.name]>1?cart[s.name]+"× ":"")+s.name;}).join(" + ")),
+          React.createElement("div",{style:{fontSize:13,color:"#aaa",marginTop:2}},"📅 "+date+" · 🕐 "+fmt12(time)),
+          React.createElement("div",{style:{fontSize:12,color:"#888",marginTop:2}},"⏱ "+totalDuration+" min total")
+        ),
+        React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:24,color:C.red}},"$"+totalPrice)
+      )
     ),
     React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:20}},
       React.createElement("div",null,React.createElement(Lbl,{text:"Your Name",err:errors.name}),React.createElement("input",{style:IS(),value:form.name,onChange:function(e){setF("name",e.target.value);},placeholder:"First name",autoCapitalize:"words"})),
@@ -791,7 +854,7 @@ function BookForm(props){
       React.createElement("div",null,
         React.createElement(Lbl,{text:"Email (optional)",sub:"For booking confirmation & reminders"}),
         React.createElement("input",{style:IS(),value:form.email||"",onChange:function(e){setF("email",e.target.value);},placeholder:"your@email.com",type:"email",autoCapitalize:"none",autoCorrect:"off"}),
-        (form.email)&&React.createElement("div",{style:{marginTop:8,display:"flex",alignItems:"center",justifyContent:"space-between",background:"#1a1a1a",border:"1px solid #222",padding:"10px 14px"}},
+        form.email&&React.createElement("div",{style:{marginTop:8,display:"flex",alignItems:"center",justifyContent:"space-between",background:"#1a1a1a",border:"1px solid #222",padding:"10px 14px"}},
           React.createElement("div",null,
             React.createElement("div",{style:{fontSize:13,color:"#f0ebe3"}},"24hr reminder email"),
             React.createElement("div",{style:{fontSize:11,color:"#666",marginTop:2}},"We'll remind you the day before")
@@ -805,25 +868,37 @@ function BookForm(props){
           RECURRING.map(function(o){return React.createElement(Btn,{key:o,onClick:function(){setF("recurring",o);},style:{padding:"9px 13px",background:form.recurring===o?C.red:"#1a1a1a",color:form.recurring===o?"#fff":"#ccc",border:"1px solid "+(form.recurring===o?C.red:C.border),fontSize:13}},o);})
         )
       ),
-      React.createElement("div",null,React.createElement(Lbl,{text:"Style Notes (optional)",sub:"Fade number, beard length, etc."}),React.createElement("textarea",{style:Object.assign({},IS(),{resize:"none"}),value:form.notes,onChange:function(e){setF("notes",e.target.value);},placeholder:"e.g. Low 2 on sides, taper in back...",rows:3})),
+      React.createElement("div",null,React.createElement(Lbl,{text:"Style Notes (optional)",sub:"Fade number, beard length, etc."}),React.createElement("textarea",{style:Object.assign({},IS(),{resize:"none"}),value:form.notes,onChange:function(e){setF("notes",e.target.value);},placeholder:"e.g. Dad: Low 2, Son: Taper...",rows:3})),
       React.createElement("div",{style:{display:"flex",gap:10,marginTop:4}},
         React.createElement(Btn,{onClick:function(){setStep(1);},style:{flex:1,padding:"14px",background:"#1a1a1a",color:"#ccc",border:"1px solid "+C.border,fontSize:14}},"← Back"),
         React.createElement(Btn,{onClick:submit,disabled:saving,style:{flex:2,padding:"14px",background:saving?"#4a0000":C.red,color:"#fff",fontFamily:"'Bebas Neue',cursive",fontSize:20,letterSpacing:2}},saving?"SAVING...":"CONFIRM 💈")
       )
     )
   );
+
+  // STEP 3: Confirmation
   return React.createElement("div",{style:{height:"100%",overflowY:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 28px 40px",gap:18,background:C.bg,textAlign:"center"}},
     React.createElement("div",{style:{fontSize:56}},"✅"),
     React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:28,letterSpacing:3,color:C.green}},"YOU'RE BOOKED!"),
     React.createElement("div",{style:{fontSize:13,color:"#bbb"}},"Esteban will see you at Shear Perfection 💈"),
-    React.createElement("div",{style:{fontSize:13,color:"#aaa",textAlign:"center",marginBottom:-8}},"Your booking with Esteban is for:"),
-    React.createElement("div",{style:{background:"#111",border:"1px solid "+C.border,padding:18,width:"100%",maxWidth:360,textAlign:"left"}},
-      [["Service",last?last.service:""],["Date",last?last.date:""],["Time",fmt12(last?last.time:"")],["Duration",svc?svc.duration+" min":""],["Price",last?"$"+last.price:""],["Recurring",last?last.recurring:""]].map(function(kv){
-        return React.createElement("div",{key:kv[0],style:{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #1a1a1a",fontSize:13}},
-          React.createElement("span",{style:{color:"#888"}},kv[0]),
-          React.createElement("span",{style:{color:"#f0ebe3",fontWeight:600}},kv[1])
-        );
-      })
+    last&&React.createElement("div",{style:{width:"100%",maxWidth:360}},
+      React.createElement("div",{style:{fontSize:13,color:"#aaa",textAlign:"center",marginBottom:8}},"Your booking with Esteban is for:"),
+      React.createElement("div",{style:{background:"#111",border:"1px solid "+C.border,padding:18,textAlign:"left"}},
+        last.bookings&&last.bookings.map(function(b,i){
+          var sv=SERVICES.find(function(s){return s.name===b.service;});
+          return React.createElement("div",{key:i,style:{paddingBottom:i<last.bookings.length-1?10:0,marginBottom:i<last.bookings.length-1?10:0,borderBottom:i<last.bookings.length-1?"1px solid #1a1a1a":"none"}},
+            React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:4}},
+              React.createElement("span",{style:{fontSize:13,color:"#f0ebe3",fontWeight:600}},b.service),
+              React.createElement("span",{style:{fontSize:13,color:C.red,fontWeight:700}},"$"+b.price)
+            ),
+            React.createElement("div",{style:{fontSize:12,color:"#888"}},"🕐 "+fmt12(b.time)+(sv?" · ⏱ "+sv.duration+" min":""))
+          );
+        }),
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginTop:10,paddingTop:10,borderTop:"1px solid #2a2a2a"}},
+          React.createElement("span",{style:{fontSize:13,color:"#888"}},"Total"),
+          React.createElement("span",{style:{fontSize:15,color:"#f0ebe3",fontWeight:700}},"$"+last.totalPrice)
+        )
+      )
     ),
     React.createElement("div",{style:{width:"100%",maxWidth:360,background:"#111",border:"1px solid #222",padding:"14px"}},
       React.createElement("div",{style:{fontSize:11,color:"#888",letterSpacing:2,textTransform:"uppercase",marginBottom:10,textAlign:"center"}},"Pay Esteban"),
@@ -845,18 +920,15 @@ function BookForm(props){
         ),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:"#0a0a0a",border:"1px solid #2a2a2a"}},
           React.createElement("div",{style:{width:28,height:28,background:"#000",border:"1px solid #444",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:9,flexShrink:0}},"Pay"),
-          React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#f0ebe3"}},"Apple Pay"),
-          React.createElement("div",{style:{fontSize:12,color:"#aaa",marginLeft:"auto"}},"In person")
-        ),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12,padding:"10px 12px",background:"#0a0a0a",border:"1px solid #2a2a2a"}},
-          React.createElement("div",{style:{fontSize:22}},"💵"),
-          React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#f0ebe3"}},"Cash"),
-          React.createElement("div",{style:{fontSize:12,color:"#aaa",marginLeft:"auto"}},"Always welcome")
+          React.createElement("div",{style:{fontSize:13,fontWeight:700,color:"#f0ebe3"}},"Apple Pay / Cash"),
+          React.createElement("div",{style:{fontSize:12,color:"#aaa",marginLeft:"auto"}},"In person 💵")
         )
       )
     ),
-    React.createElement(Btn,{onClick:function(){dlICS(last);},style:{width:"100%",maxWidth:360,padding:"14px",background:"#1a3a1a",color:"#6fcf6f",border:"1px solid "+C.green,fontSize:14,fontFamily:"inherit"}},"🍎 Save to Apple Calendar"),
-    React.createElement(Btn,{onClick:function(){window.open(gCalLink(last),"_blank");},style:{width:"100%",maxWidth:360,padding:"14px",background:"#0a1a2a",color:"#6fa8ff",border:"1px solid #2a4a6a",fontSize:14,fontFamily:"inherit"}},"📅 Save to Google Calendar"),
+    last&&last.bookings&&last.bookings[0]&&React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10,width:"100%",maxWidth:360}},
+      React.createElement(Btn,{onClick:function(){dlICS(last.bookings[0]);},style:{width:"100%",padding:"14px",background:"#1a3a1a",color:"#6fcf6f",border:"1px solid "+C.green,fontSize:14,fontFamily:"inherit"}},"🍎 Save to Apple Calendar"),
+      React.createElement(Btn,{onClick:function(){window.open(gCalLink(last.bookings[0]),"_blank");},style:{width:"100%",padding:"14px",background:"#0a1a2a",color:"#6fa8ff",border:"1px solid #2a4a6a",fontSize:14,fontFamily:"inherit"}},"📅 Save to Google Calendar")
+    ),
     React.createElement(Btn,{onClick:reset,style:{width:"100%",maxWidth:360,padding:"14px",background:C.red,color:"#fff",fontFamily:"'Bebas Neue',cursive",fontSize:18,letterSpacing:2}},"BOOK ANOTHER")
   );
 }
