@@ -527,7 +527,7 @@ function Settings(props){
       "&scope="+encodeURIComponent("https://www.googleapis.com/auth/calendar.events")+
       "&access_type=offline&prompt=consent"+
       "&state=gcal_oauth";
-    window.open(authUrl,"_blank");
+    window.location.href=authUrl;
   }
   var cts=useState(false);var ct=cts[0];var setCt=cts[1];
   var cms=useState(null);var cm=cms[0];var setCm=cms[1];
