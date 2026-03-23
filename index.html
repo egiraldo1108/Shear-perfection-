@@ -1157,10 +1157,17 @@ function App(){
     var state=params.get("state");
     if(code&&state==="gcal_oauth"){
       fetch("https://us-central1-shear-perfection-barbershop.cloudfunctions.net/saveGCalToken?code="+encodeURIComponent(code))
-        .then(function(){
+        .then(function(r){return r.text().then(function(txt){return {ok:r.ok,txt:txt};});})
+        .then(function(res){
           window.history.replaceState({},"",window.location.pathname);
-          alert("✅ Google Calendar connected! Bookings will now appear automatically.");
-        }).catch(function(e){console.error("Token save failed",e);});
+          if(res.ok){
+            alert("✅ Google Calendar connected! Bookings will now appear automatically.");
+          } else {
+            alert("❌ Failed to save token: "+res.txt);
+          }
+        }).catch(function(e){
+          alert("❌ Network error: "+e.message);
+        });
     }
     fbGetSettings().then(function(s){setSettingsState(s);setReady(true);}).catch(function(){setDbErr(true);});
   },[]);
