@@ -727,9 +727,14 @@ function BookForm(props){
       }
       setSaving(false);setStep(3);
     }).catch(function(e){
+      console.error("Save error:",e);
       setSaving(false);
-      if(e.message==="SLOT_TAKEN"){alert("⚠️ That slot was just taken! Please pick a different time.");setTime("");setStep(1);}
-      else alert("Couldn't save — check connection.");
+      if(e&&e.message==="SLOT_TAKEN"){alert("⚠️ That slot was just taken! Please pick a different time.");setTime("");setStep(1);}
+      else{
+        // Try to identify Firestore permission or network error
+        var msg=e&&e.message?e.message:"Unknown error";
+        alert("Couldn't save: "+msg+". Check your connection and try again.");
+      }
     });
   }
 
