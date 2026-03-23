@@ -515,6 +515,20 @@ function Settings(props){
   var ds=useState(initHours);var dayHours=ds[0];var setDayHours=ds[1];
   var ns=useState(settings.ntfyTopic||"");var ntfyTopic=ns[0];var setNtfyTopic=ns[1];
   var ebs=useState(settings.excludeBlocks!==false);var excludeBlocks=ebs[0];var setExcludeBlocks=ebs[1];
+  var gcs=useState(false);var gcalConnected=gcs[0];var setGcalConnected=gcs[1];
+  useEffect(function(){
+    db.collection("_config").doc("gcal_token").get().then(function(d){setGcalConnected(d.exists&&!!d.data().refresh_token);}).catch(function(){});
+  },[]);
+  function connectGCal(){
+    var authUrl="https://accounts.google.com/o/oauth2/v2/auth?"+
+      "client_id=99950197287-gqpt6l539q91fc5785jmc6joviuni71a.apps.googleusercontent.com&"+
+      "redirect_uri="+encodeURIComponent("https://egiraldo1108.github.io/Shear-perfection-/")+
+      "&response_type=code"+
+      "&scope="+encodeURIComponent("https://www.googleapis.com/auth/calendar.events")+
+      "&access_type=offline&prompt=consent"+
+      "&state=gcal_oauth";
+    window.open(authUrl,"_blank");
+  }
   var cts=useState(false);var ct=cts[0];var setCt=cts[1];
   var cms=useState(null);var cm=cms[0];var setCm=cms[1];
   var sms=useState(false);var smsSent=sms[0];var setSmsSent=sms[1];
@@ -572,6 +586,16 @@ function Settings(props){
       React.createElement("input",{style:IS({marginBottom:10}),value:calUrl,onChange:function(e){setCalUrl(e.target.value);},placeholder:"https://calendar.google.com/calendar/ical/...",autoCapitalize:"none",autoCorrect:"off",spellCheck:false}),
       calUrl&&React.createElement(Btn,{onClick:testCal,disabled:ct,style:{width:"100%",padding:"13px",background:ct?"#111":"#1a3a1a",color:"#6fcf6f",border:"1px solid "+C.green,fontSize:14,fontFamily:"inherit"}},ct?"Testing...":"Test Calendar Connection"),
       cm&&React.createElement("div",{style:{marginTop:10,padding:"12px 14px",background:cm.ok?"#0d1a00":"#1a0000",border:"1px solid "+(cm.ok?C.green:C.red),fontSize:13,color:cm.ok?"#6fcf6f":"#ff6b6b",lineHeight:1.6}},cm.msg)
+    ),
+    React.createElement("div",{style:{marginBottom:28}},
+      React.createElement(Lbl,{text:"Auto-Add to Google Calendar",sub:"Bookings appear in your calendar automatically"}),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:C.card,border:"1px solid "+(gcalConnected?"#2a4a2a":C.border),padding:"14px"}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:13,color:"#f0ebe3",fontWeight:700}},gcalConnected?"✅ Calendar Connected":"Not Connected"),
+          React.createElement("div",{style:{fontSize:11,color:gcalConnected?"#4caf50":"#666",marginTop:2}},gcalConnected?"New bookings go straight to your calendar":"Connect once to enable auto-add")
+        ),
+        React.createElement(Btn,{onClick:connectGCal,style:{padding:"8px 16px",background:gcalConnected?"#1a2a1a":"#8B0000",color:gcalConnected?"#4caf50":"#fff",border:"1px solid "+(gcalConnected?"#2a4a2a":"#8B0000"),fontSize:12,fontFamily:"inherit"}},gcalConnected?"Reconnect":"Connect →")
+      )
     ),
     React.createElement("div",{style:{marginBottom:28}},
       React.createElement(Lbl,{text:"Personal Calendar Blocks",sub:"Exclude Tue 12-1:30, Wed 11:30-1:30, Thu 10-11:30 & 12:30-1:30"}),
@@ -1127,6 +1151,17 @@ function App(){
   var ovs=useState("dash");var ownerView=ovs[0];var setOwnerView=ovs[1];
   function setSettings(s){setSettingsState(s);fbSaveSettings(s).catch(function(e){console.error(e);});}
   useEffect(function(){
+    // Handle OAuth callback
+    var params=new URLSearchParams(window.location.search);
+    var code=params.get("code");
+    var state=params.get("state");
+    if(code&&state==="gcal_oauth"){
+      fetch("https://us-central1-shear-perfection-barbershop.cloudfunctions.net/saveGCalToken?code="+encodeURIComponent(code))
+        .then(function(){
+          window.history.replaceState({},"",window.location.pathname);
+          alert("✅ Google Calendar connected! Bookings will now appear automatically.");
+        }).catch(function(e){console.error("Token save failed",e);});
+    }
     fbGetSettings().then(function(s){setSettingsState(s);setReady(true);}).catch(function(){setDbErr(true);});
   },[]);
   useEffect(function(){if(!ready)return;return fbListen(setBookings);},[ready]);
