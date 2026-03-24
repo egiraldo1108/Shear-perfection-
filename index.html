@@ -745,9 +745,16 @@ function BookForm(props){
         var serviceNames=cartItems.map(function(s){return (cart[s.name]>1?cart[s.name]+"x ":"")+s.name;}).join(", ");
         sendNotif(settings.ntfyTopic,"💈 New Booking!",form.name+" · "+serviceNames+"\n"+dispDate+" at "+fmt12(time)+"\n"+form.phone);
       }
-      if(form.email&&firstB){
-        sendConfirmationEmail(form.email,form.name,firstB,cartItems[0]);
-        if(form.emailReminder)scheduleReminderEmail(form.email,form.name,firstB,cartItems[0]);
+      if(form.email&&savedBookings.length>0){
+        var allServices=savedBookings.map(function(sb){return sb.service;}).join(" + ");
+        var allPrices=savedBookings.reduce(function(sum,sb){return sum+(Number(sb.price)||0);},0);
+        var combinedB=Object.assign({},savedBookings[0],{
+          service:allServices,
+          price:allPrices,
+          notes:form.notes
+        });
+        sendConfirmationEmail(form.email,form.name,combinedB,cartItems[0]);
+        if(form.emailReminder)scheduleReminderEmail(form.email,form.name,savedBookings[0],cartItems[0]);
       }
       setSaving(false);setStep(3);
     }).catch(function(e){
