@@ -522,7 +522,7 @@ function Settings(props){
   function connectGCal(){
     var authUrl="https://accounts.google.com/o/oauth2/v2/auth?"+
       "client_id=99950197287-gqpt6l539q91fc5785jmc6joviuni71a.apps.googleusercontent.com&"+
-      "redirect_uri="+encodeURIComponent("https://egiraldo1108.github.io/Shear-perfection-/")+
+      "redirect_uri="+encodeURIComponent("https://us-central1-shear-perfection-barbershop.cloudfunctions.net/saveGCalToken")+
       "&response_type=code"+
       "&scope="+encodeURIComponent("https://www.googleapis.com/auth/calendar.events")+
       "&access_type=offline&prompt=consent"+
