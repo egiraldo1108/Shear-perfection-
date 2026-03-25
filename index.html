@@ -748,9 +748,11 @@ function BookForm(props){
       if(form.email&&savedBookings.length>0){
         var allServices=savedBookings.map(function(sb){return sb.service;}).join(" + ");
         var allPrices=savedBookings.reduce(function(sum,sb){return sum+(Number(sb.price)||0);},0);
+        var totalDur=cartItems.reduce(function(sum,s){return sum+(s.duration*(cart[s.name]||0));},0);
         var combinedB=Object.assign({},savedBookings[0],{
           service:allServices,
           price:allPrices,
+          duration:totalDur,
           notes:form.notes
         });
         sendConfirmationEmail(form.email,form.name,combinedB,cartItems[0]);
