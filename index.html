@@ -85,13 +85,14 @@ function extractCalendarId(url){
   if(url.includes("@"))return url.trim();
   return null;
 }
-function fetchGCal(url){
+function fetchGCal(url,startDate){
   if(!url)return Promise.resolve([]);
   var calId=extractCalendarId(url);
   if(!calId)return Promise.resolve(null);
-  var key=calId+"|"+new Date().toDateString();
+  var fromDate=startDate||new Date();
+  var key=calId+"|"+fromDate.toDateString();
   if(_gcalCache[key])return Promise.resolve(_gcalCache[key]);
-  var now=new Date().toISOString();
+  var now=fromDate.toISOString();
   var ep="https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(calId)+"/events?key="+GCAL_KEY+"&timeMin="+now+"&singleEvents=true&maxResults=500&orderBy=startTime";
   return fetch(ep).then(function(r){
     if(!r.ok){console.error("GCal",r.status);return null;}
@@ -1025,7 +1026,13 @@ function Dashboard(props){
     });
     chain.then(function(){setExtending(false);});
   },[bookings.length]);
-  useEffect(function(){if(!settings.calUrl)return;fetchGCal(settings.calUrl).then(function(evs){setGcalEvents(evs||[]);});},[settings.calUrl]);
+  useEffect(function(){
+    if(!settings.calUrl)return;
+    var now=new Date();
+    var diffToMon=now.getDay()===0?-6:1-now.getDay();
+    var wStart=new Date(now);wStart.setDate(now.getDate()+diffToMon);wStart.setHours(0,0,0,0);
+    fetchGCal(settings.calUrl,wStart).then(function(evs){setGcalEvents(evs||[]);});
+  },[settings.calUrl,weekOffset]);
   function confirmDelete(id,seriesId,name){if(seriesId)setDeleteModal({id:id,seriesId:seriesId,name:name});else doDeleteOne(id);}
   function doDeleteOne(id){setDeleting(id);setDeleteModal(null);fbDeleteOne(id).catch(function(){alert("Couldn't delete.");}).then(function(){setDeleting(null);});}
   function doDeleteSeries(seriesId){setDeleteModal(null);setDeleting(seriesId);fbDeleteSeries(seriesId).catch(function(){alert("Couldn't delete series.");}).then(function(){setDeleting(null);});}
@@ -1082,7 +1089,7 @@ function Dashboard(props){
       React.createElement("div",{style:{fontSize:10,color:C.dim,letterSpacing:2}},"🔴 LIVE · SYNCS ACROSS ALL DEVICES"+(extending?" · extending series...":""))
     ),
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:18}},
-      [{l:"Total Bookings",v:bookings.length},{l:"Today",v:todayN},{l:"Recurring Clients",v:recN}].map(function(s){
+      [{l:"This Week's Bookings",v:weekAppBookings.length},{l:"Today",v:todayN},{l:"Recurring Clients",v:recN}].map(function(s){
         return React.createElement("div",{key:s.l,style:{background:C.card,border:"1px solid "+C.border,padding:"12px 14px"}},
           React.createElement("div",{style:{fontFamily:"'Bebas Neue',cursive",fontSize:30,color:C.red,lineHeight:1}},s.v),
           React.createElement("div",{style:{fontSize:10,color:"#888",letterSpacing:1,textTransform:"uppercase",marginTop:3}},s.l)
